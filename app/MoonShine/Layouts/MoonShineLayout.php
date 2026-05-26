@@ -1,0 +1,53 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\MoonShine\Layouts;
+
+use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
+use App\MoonShine\Resources\User\UserResource;
+use MoonShine\ColorManager\ColorManager;
+use MoonShine\ColorManager\Palettes\PurplePalette;
+use MoonShine\Contracts\ColorManager\ColorManagerContract;
+use MoonShine\Laravel\Layouts\AppLayout;
+use MoonShine\MenuManager\MenuGroup;
+use MoonShine\MenuManager\MenuItem;
+
+
+final class MoonShineLayout extends AppLayout
+{
+    /**
+     * @var null|class-string<PaletteContract>
+     */
+    protected ?string $palette = PurplePalette::class;
+
+    protected function assets(): array
+    {
+        return [
+            ...parent::assets(),
+        ];
+    }
+
+    protected function menu(): array
+    {
+        return [
+            ...parent::menu(),
+            MenuItem::make(UserResource::class, 'Users'),
+            
+            MenuGroup::make('Elastic', [
+                MenuItem::make(EngineNotifReportResource::class, 'Engine Notif')
+                    ->Icon('chart-bar'),
+            ])->icon('circle-stack'),
+        ];
+    }
+
+    /**
+     * @param ColorManager $colorManager
+     */
+    protected function colors(ColorManagerContract $colorManager): void
+    {
+        parent::colors($colorManager);
+
+        // $colorManager->primary('#00000');
+    }
+}

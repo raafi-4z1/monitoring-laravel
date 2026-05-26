@@ -18,11 +18,10 @@ Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang menginteg
 
 ## Fitur
 
-- **Dashboard** — ringkasan statistik user dan tabel data terbaru
+- **Dashboard** — 
 - **Engine Notif Report** — laporan harian notifikasi (MVRK, SMS, Email) dari Elasticsearch
 - **Scheduler Otomatis** — fetch data dari Elasticsearch setiap hari pukul 00:05
-- **Fetch Manual** — ambil data hari tertentu langsung dari admin panel
-- **Filter Tanggal** — filter data berdasarkan rentang tanggal
+- **Filter Tanggal** — filter data berdasarkan tanggal
 - **Pagination & Sort** — navigasi data dengan pagination dan pengurutan kolom
 - **Export Excel** — export data ke file `.xlsx` bawaan MoonShine
 - **User Management** — manajemen user dengan CRUD lengkap

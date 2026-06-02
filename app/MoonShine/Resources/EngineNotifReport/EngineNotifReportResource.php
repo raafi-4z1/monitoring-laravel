@@ -57,7 +57,9 @@ class EngineNotifReportResource extends ModelResource implements HasImportExport
 
     protected function search(): array
     {
-        return ['report_date'];
+        return [
+            // 'report_date'
+        ];
     }
 
     /**

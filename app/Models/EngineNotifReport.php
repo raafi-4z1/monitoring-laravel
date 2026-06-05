@@ -18,6 +18,7 @@ class EngineNotifReport extends Model
         'email_success',
         'email_fail',
         'avg_response_time',
+        'avg_lifespan',
     ];
 
     protected $casts = [

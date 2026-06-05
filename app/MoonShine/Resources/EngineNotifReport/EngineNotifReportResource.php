@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\MoonShine\Resources\EngineNotifReport;
 
 use App\Models\EngineNotifReport;
-use App\MoonShine\Resources\EngineNotifReport\Pages\EngineNotifReportDetailPage;
+use App\MoonShine\Resources\EngineNotifReport\Pages\EngineNotifReportFetchPage;
 use App\MoonShine\Resources\EngineNotifReport\Pages\EngineNotifReportIndexPage;
 use MoonShine\Contracts\Core\PageContract;
 use MoonShine\Crud\Handlers\Handler;
@@ -13,12 +13,14 @@ use MoonShine\ImportExport\Contracts\HasImportExportContract;
 use MoonShine\ImportExport\ExportHandler;
 use MoonShine\ImportExport\Traits\ImportExportConcern;
 use MoonShine\Laravel\Resources\ModelResource;
+use MoonShine\Support\Enums\Action;
+use MoonShine\Support\ListOf;
 use MoonShine\UI\Fields\Date;
 use MoonShine\UI\Fields\Number;
 use MoonShine\UI\Fields\Preview;
 
 /**
- * @extends ModelResource<EngineNotifReport, EngineNotifReportIndexPage, EngineNotifReportDetailPage>
+ * @extends ModelResource<EngineNotifReport, EngineNotifReportIndexPage,  EngineNotifReportFetchPage>
  */
 class EngineNotifReportResource extends ModelResource implements HasImportExportContract
 {
@@ -31,6 +33,13 @@ class EngineNotifReportResource extends ModelResource implements HasImportExport
     protected string $sortColumn = 'report_date';
     protected int $itemsPerPage = 10;
     protected bool $usePagination = true;
+
+    protected function activeActions(): ListOf
+    {
+        return parent::activeActions()
+            ->except(Action::VIEW, Action::UPDATE, Action::DELETE, Action::MASS_DELETE)
+        ;
+    }
 
     public function getItemsPerPage(): int
     {
@@ -57,9 +66,7 @@ class EngineNotifReportResource extends ModelResource implements HasImportExport
 
     protected function search(): array
     {
-        return [
-            // 'report_date'
-        ];
+        return [];
     }
 
     /**
@@ -69,7 +76,7 @@ class EngineNotifReportResource extends ModelResource implements HasImportExport
     {
         return [
             EngineNotifReportIndexPage::class,
-            // EngineNotifReportDetailPage::class,
+            EngineNotifReportFetchPage::class,
         ];
     }
 
@@ -90,6 +97,8 @@ class EngineNotifReportResource extends ModelResource implements HasImportExport
             Number::make('Total Fail',    'total_fail'),
             Preview::make('Avg RT (s)',   'avg_response_time')
                 ->changeFill(fn($item) => number_format((float) $item->avg_response_time, 2) . 's'),
+            Preview::make('Avg Lifespan (ms)', 'avg_lifespan')
+                ->changeFill(fn($item) => number_format((float) $item->avg_lifespan, 2) . 's'),
         ];
     }
 

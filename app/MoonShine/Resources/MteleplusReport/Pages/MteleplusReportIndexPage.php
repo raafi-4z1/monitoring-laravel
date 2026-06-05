@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\MoonShine\Resources\EngineNotifReport\Pages;
+namespace App\MoonShine\Resources\MteleplusReport\Pages;
 
-use App\Models\EngineNotifReport;
-use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
+use App\Models\MteleplusReport;
+use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
 use Illuminate\Support\Collection;
 use MoonShine\Apexcharts\Components\DonutChartMetric;
 use MoonShine\Apexcharts\Components\LineChartMetric;
@@ -38,9 +38,9 @@ use Throwable;
 
 
 /**
- * @extends IndexPage<EngineNotifReportResource>
+ * @extends IndexPage<MteleplusReportResource>
  */
-class EngineNotifReportIndexPage extends IndexPage
+class MteleplusReportIndexPage extends IndexPage
 {
     protected bool $isLazy = true;
 
@@ -57,32 +57,25 @@ class EngineNotifReportIndexPage extends IndexPage
     protected function fields(): iterable
     {
         return [
-            Date::make('Tanggal', 'report_date')
-                ->sortable()
-                ->format('Y-m-d'),
-
-            Number::make('MVRK Success', 'mvrk_success')->sortable(),
-            Number::make('MVRK Fail',    'mvrk_fail')->sortable(),
-            Number::make('MVRK Total',   'mvrk_total')->sortable(),
-
-            Number::make('SMS Success',  'sms_success')->sortable(),
-            Number::make('SMS Fail',     'sms_fail')->sortable(),
-            Number::make('SMS Total',    'sms_total')->sortable(),
-
-            Number::make('Email Success','email_success')->sortable(),
-            Number::make('Email Fail',   'email_fail')->sortable(),
-            Number::make('Email Total',  'email_total')->sortable(),
-
-            Number::make('Total Success','total_success')->sortable(),
-            Number::make('Total Fail',   'total_fail')->sortable(),
-
-            Preview::make('Avg RT (s)',       'avg_response_time')
-                ->changeFill(fn($item) => number_format((float) $item->avg_response_time, 2) . 's')
+            Date::make('Tanggal', 'report_date')->sortable()->format('Y-m-d'),
+            Number::make('AKT Success',  'akt_success')->sortable(),
+            Number::make('AKT Fail',     'akt_fail')->sortable(),
+            Preview::make('AKT Total',   'akt_total')
+                ->changeFill(fn($item) => number_format($item->akt_total))
                 ->sortable(),
-
-            Preview::make('Avg Lifespan (ms)', 'avg_lifespan')
-                ->changeFill(fn($item) => number_format((float) $item->avg_lifespan, 2) . 's')
+            Number::make('RPIN Success', 'rpin_success')->sortable(),
+            Number::make('RPIN Fail',    'rpin_fail')->sortable(),
+            Preview::make('RPIN Total',  'rpin_total')
+                ->changeFill(fn($item) => number_format($item->rpin_total))
                 ->sortable(),
+            Preview::make('Total Success', 'total_success')
+                ->changeFill(fn($item) => number_format($item->total_success))
+                ->sortable(),
+            Preview::make('Total Fail',    'total_fail')
+                ->changeFill(fn($item) => number_format($item->total_fail))
+                ->sortable(),
+            Number::make('Incoming', 'total_incoming')->sortable(),
+            Number::make('Outgoing', 'total_outgoing')->sortable(),
         ];
     }
 
@@ -115,7 +108,8 @@ class EngineNotifReportIndexPage extends IndexPage
     }
 
     /**
-     * @param TableBuilder $component
+     * @param  TableBuilder  $component
+     *
      * @return TableBuilder
      */
     protected function modifyListComponent(ComponentContract $component): ComponentContract
@@ -124,10 +118,8 @@ class EngineNotifReportIndexPage extends IndexPage
             ->columnSelection()
             ->sticky()
             ->stickyButtons()
-            // ✅ Saat filter submit → table reload → dispatch FRAGMENT_UPDATED
-            // Fragment akan reload dengan withQueryParams() membawa filter dari URL
             ->async(events: [
-                AlpineJs::event(JsEvent::FRAGMENT_UPDATED, 'engine-notif-charts'),
+                AlpineJs::event(JsEvent::FRAGMENT_UPDATED, 'mteleplus-charts'),
             ])
             ->topRight(function () {
                 return [
@@ -149,7 +141,7 @@ class EngineNotifReportIndexPage extends IndexPage
         $perPage = request()->integer('value');
 
         if ($perPage > 0) {
-            session(['perPage' => $perPage]);
+            session(['mteleplusPerPage' => $perPage]);
         }
 
         return JsonResponse::make()
@@ -157,6 +149,7 @@ class EngineNotifReportIndexPage extends IndexPage
                 AlpineJs::event(JsEvent::TABLE_UPDATED, $this->getListComponentName()),
             ]);
     }
+
 
     /**
      * @return list<ComponentContract>
@@ -181,13 +174,11 @@ class EngineNotifReportIndexPage extends IndexPage
             $this->lastUpdateAlert(),
             ...parent::mainLayer(),
 
-            // ✅ Fragment dengan withQueryParams() — kunci utama!
             Fragment::make([
                 $this->buildCharts($data, $period),
             ])
-            ->name('engine-notif-charts')
+            ->name('mteleplus-charts')
             ->withQueryParams(),
-
         ];
     }
 
@@ -198,13 +189,13 @@ class EngineNotifReportIndexPage extends IndexPage
     protected function bottomLayer(): array
     {
         return [
-            ...parent::bottomLayer(),
+            ...parent::bottomLayer()
         ];
     }
 
     protected function lastUpdateAlert(): Alert
     {
-        $latest = EngineNotifReport::latest('report_date')->first();
+        $latest = MteleplusReport::latest('report_date')->first();
 
         return $latest
             ? Alert::make(type: 'info')
@@ -212,25 +203,16 @@ class EngineNotifReportIndexPage extends IndexPage
             : Alert::make(type: 'warning')
                 ->content('Belum ada data. Gunakan Fetch Manual.');
     }
-    
-    /**
-     * Ambil filter dari request dan query data dari DB.
-     * Mendukung dua sumber: _data (Fragment reload) dan filter (page load).
-     * Default: dari = awal bulan ini, sampai = hari ini.
-     *
-     * @return array{0: string, 1: string, 2: string, 3: \Illuminate\Support\Collection}
-     */
+
     private function getFilteredData(): array
     {
-        // ✅ Coba dari _data (Fragment reload via withQueryParams)
-        // ✅ Fallback ke filter (page load biasa)
         $from = request()->input('_data.filter.report_date.from')
-            ?? request()->input('filter.report_date.from')
-            ?? now()->startOfMonth()->format('Y-m-d');
+             ?? request()->input('filter.report_date.from')
+             ?? now()->startOfMonth()->format('Y-m-d');
 
         $to   = request()->input('_data.filter.report_date.to')
-            ?? request()->input('filter.report_date.to')
-            ?? now()->format('Y-m-d');
+             ?? request()->input('filter.report_date.to')
+             ?? now()->format('Y-m-d');
 
         $dateFrom = !empty($from) ? $from : now()->startOfMonth()->format('Y-m-d');
         $dateTo   = !empty($to)   ? $to   : now()->format('Y-m-d');
@@ -239,7 +221,7 @@ class EngineNotifReportIndexPage extends IndexPage
                 . ' - '
                 . \Carbon\Carbon::parse($dateTo)->format('d M Y');
 
-        $data = EngineNotifReport::query()
+        $data = MteleplusReport::query()
             ->whereBetween('report_date', [$dateFrom, $dateTo])
             ->orderBy('report_date')
             ->get();
@@ -247,95 +229,92 @@ class EngineNotifReportIndexPage extends IndexPage
         return [$dateFrom, $dateTo, $period, $data];
     }
 
-    /**
-     * Render semua chart berdasarkan data yang sudah difilter.
-     */
     private function buildCharts(Collection $data, string $period): Grid
     {
         if ($data->isEmpty()) {
             return Grid::make([
                 Column::make([Divider::make()])->columnSpan(12),
                 Column::make([
-                    Alert::make(type: 'info')
-                        ->content('Tidak ada data untuk periode ini.'),
+                    Alert::make(type: 'info')->content('Tidak ada data untuk periode ini.'),
                 ])->columnSpan(12),
             ]);
         }
 
-        $totalSuccess = $data->sum('total_success');
-        $totalFail    = $data->sum('total_fail');
-        $totalMvrk    = $data->sum('mvrk_success') + $data->sum('mvrk_fail');
-        $totalSms     = $data->sum('sms_success')   + $data->sum('sms_fail');
-        $totalEmail   = $data->sum('email_success')  + $data->sum('email_fail');
+        $totalSuccess  = $data->sum('total_success');
+        $totalFail     = $data->sum('total_fail');
+        $totalIncoming = $data->sum('total_incoming');
+        $totalOutgoing = $data->sum('total_outgoing');
+        $totalAkt      = $data->sum('akt_success') + $data->sum('akt_fail');
+        $totalRpin     = $data->sum('rpin_success') + $data->sum('rpin_fail');
 
-        $successByDate = $data->mapWithKeys(fn($row) => [
-            $row->report_date->format('Y-m-d') => (int) $row->total_success,
-        ])->toArray();
-
-        $failByDate = $data->mapWithKeys(fn($row) => [
-            $row->report_date->format('Y-m-d') => (int) $row->total_fail,
-        ])->toArray();
-
-        $avgRtByDate = $data->mapWithKeys(fn($row) => [
-            $row->report_date->format('Y-m-d') => (float) $row->avg_response_time,
-        ])->toArray();
-
-        $avgLsByDate = $data->mapWithKeys(fn($row) => [
-            $row->report_date->format('Y-m-d') => (float) $row->avg_lifespan,
-        ])->toArray();
+        $aktSuccessByDate  = $data->mapWithKeys(fn($r) => [$r->report_date->format('Y-m-d') => (int) $r->akt_success])->toArray();
+        $aktFailByDate     = $data->mapWithKeys(fn($r) => [$r->report_date->format('Y-m-d') => (int) $r->akt_fail])->toArray();
+        $rpinSuccessByDate = $data->mapWithKeys(fn($r) => [$r->report_date->format('Y-m-d') => (int) $r->rpin_success])->toArray();
+        $rpinFailByDate    = $data->mapWithKeys(fn($r) => [$r->report_date->format('Y-m-d') => (int) $r->rpin_fail])->toArray();
+        $incomingByDate    = $data->mapWithKeys(fn($r) => [$r->report_date->format('Y-m-d') => (int) $r->total_incoming])->toArray();
+        $outgoingByDate    = $data->mapWithKeys(fn($r) => [$r->report_date->format('Y-m-d') => (int) $r->total_outgoing])->toArray();
 
         return Grid::make([
             Column::make([Divider::make()])->columnSpan(12),
 
-            // ✅ Info periode
             Column::make([
                 Alert::make(type: 'info')
                     ->content("Data periode: <strong>{$period}</strong>"),
             ])->columnSpan(12),
 
-            // ✅ ValueMetric
+            // ValueMetrics
             Column::make([
-                ValueMetric::make("Total Transaksi ({$period})")
-                    ->value(number_format($totalSuccess + $totalFail)),
-            ])->columnSpan(4),
-
-            Column::make([
-                ValueMetric::make("Total Berhasil ({$period})")
+                ValueMetric::make("Total Success ({$period})")
                     ->value(number_format($totalSuccess)),
-            ])->columnSpan(4),
+            ])->columnSpan(3),
 
             Column::make([
-                ValueMetric::make("Total Gagal ({$period})")
+                ValueMetric::make("Total Fail ({$period})")
                     ->value(number_format($totalFail)),
-            ])->columnSpan(4),
+            ])->columnSpan(3),
 
-            // ✅ Line Chart: Success vs Fail
             Column::make([
-                LineChartMetric::make('Success vs Fail per Hari')
-                    ->series(SeriesItem::make('Total Success', $successByDate)->line())
-                    ->series(SeriesItem::make('Total Fail', $failByDate)->line()),
+                ValueMetric::make("Total Incoming ({$period})")
+                    ->value(number_format($totalIncoming)),
+            ])->columnSpan(3),
+
+            Column::make([
+                ValueMetric::make("Total Outgoing ({$period})")
+                    ->value(number_format($totalOutgoing)),
+            ])->columnSpan(3),
+
+            // Line Chart: AKT
+            Column::make([
+                LineChartMetric::make('AKT per Hari')
+                    ->series(SeriesItem::make('AKT Success', $aktSuccessByDate)->line())
+                    ->series(SeriesItem::make('AKT Fail',    $aktFailByDate)->line()),
+            ])->columnSpan(6),
+
+            // Line Chart: RPIN
+            Column::make([
+                LineChartMetric::make('RPIN per Hari')
+                    ->series(SeriesItem::make('RPIN Success', $rpinSuccessByDate)->line())
+                    ->series(SeriesItem::make('RPIN Fail',    $rpinFailByDate)->line()),
+            ])->columnSpan(6),
+
+            // Line Chart: Incoming vs Outgoing
+            Column::make([
+                LineChartMetric::make('Incoming vs Outgoing per Hari')
+                    ->series(SeriesItem::make('Incoming', $incomingByDate)->line())
+                    ->series(SeriesItem::make('Outgoing', $outgoingByDate)->line()),
             ])->columnSpan(12),
 
-            // ✅ Line Chart: Avg Response Time
+            // Donut: AKT vs RPIN
             Column::make([
-                LineChartMetric::make('Avg Response Time (s)')
-                    ->series(SeriesItem::make('Avg RT', $avgRtByDate)->line()),
+                DonutChartMetric::make('Distribusi AKT vs RPIN')
+                    ->values(['AKT' => $totalAkt, 'RPIN' => $totalRpin])
+                    ->decimals(0),
             ])->columnSpan(6),
 
-            // ✅ Line Chart: Avg Lifespan
+            // Donut: Incoming vs Outgoing
             Column::make([
-                LineChartMetric::make('Avg Lifespan (ms)')
-                    ->series(SeriesItem::make('Avg Lifespan', $avgLsByDate)->line()),
-            ])->columnSpan(6),
-
-            // ✅ Donut Chart: per Channel
-            Column::make([
-                DonutChartMetric::make('Distribusi per Channel')
-                    ->values([
-                        'MVRK'  => $totalMvrk,
-                        'SMS'   => $totalSms,
-                        'Email' => $totalEmail,
-                    ])
+                DonutChartMetric::make('Incoming vs Outgoing')
+                    ->values(['Incoming' => $totalIncoming, 'Outgoing' => $totalOutgoing])
                     ->decimals(0),
             ])->columnSpan(6),
         ]);

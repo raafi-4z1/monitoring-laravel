@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
+use App\MoonShine\Resources\EngineNotifReport\Pages\EngineNotifReportFetchPage;
 use App\MoonShine\Resources\MoonShineUser\MoonShineUserResource;
 use App\MoonShine\Resources\MoonShineUserRole\MoonShineUserRoleResource;
+use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
+use App\MoonShine\Resources\MteleplusReport\Pages\MteleplusReportFetchPage;
 use App\MoonShine\Resources\User\UserResource;
 use Illuminate\Support\ServiceProvider;
 use MoonShine\Contracts\Core\DependencyInjection\CoreContract;
@@ -26,9 +29,12 @@ class MoonShineServiceProvider extends ServiceProvider
                 MoonShineUserRoleResource::class,
                 UserResource::class,
                 EngineNotifReportResource::class,
+                MteleplusReportResource::class,
             ])
             ->pages([
                 ...$core->getConfig()->getPages(),
+                EngineNotifReportFetchPage::class,
+                MteleplusReportFetchPage::class,
             ]);
     }
 }

@@ -1,27 +1,15 @@
 # Monitoring Laravel
 
-Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang mengintegrasikan data dari **Elasticsearch** ke database MySQL, dilengkapi dengan dashboard, laporan harian, scheduler otomatis, dan export Excel.
-
----
-
-## Tech Stack
-
-| Teknologi | Versi |
-|---|---|
-| PHP | 8.2+ |
-| Laravel | 12.x |
-| MoonShine | 4.x |
-| moonshine/import-export | 2.x |
-| MySQL | 8.x |
-| Elasticsearch | 7.x / 8.x |
+Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang mengintegrasikan data dari **Elasticsearch** ke database MySQL, dilengkapi dengan dashboard, laporan harian, scheduler otomatis, chart interaktif, dan export Excel.
 
 ---
 
 ## Fitur
 
-- **Dashboard** — 
-- **Engine Notif Report** — laporan harian notifikasi (MVRK, SMS, Email) dari Elasticsearch
-- **Scheduler Otomatis** — fetch data dari Elasticsearch setiap hari pukul 00:05
+- **Engine Notif Report** — laporan harian Engine Notif dari Elasticsearch
+- **mTeleplus Report** — laporan harian mTeleplus dari Elasticsearch
+- **Chart Interaktif** — LineChart & DonutChart via ApexCharts, ikut filter DateRange
+- **Scheduler Otomatis** — fetch data dari Elasticsearch setiap hari otomatis
 - **Fetch Manual** — ambil data rentang tanggal tertentu langsung dari admin panel
 - **Filter Tanggal** — filter data berdasarkan rentang tanggal dengan `DateRange`
 - **Pagination & Sort** — navigasi data dengan dropdown per page dan pengurutan kolom
@@ -33,37 +21,68 @@ Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang menginteg
 ## Struktur Proyek
 
 ```
-app/
-├── Console/
-│   └── Commands/
-│       └── FetchEngineNotifReport.php        # Artisan command fetch ES
-├── Models/
-│   ├── User.php
-│   └── EngineNotifReport.php                 # Model + accessor kalkulasi
-├── MoonShine/
-│   ├── Layouts/
-│   │   └── MoonShineLayout.php               # Layout & konfigurasi menu
-│   ├── Pages/
-│   │   └── Dashboard.php                     # Halaman dashboard
-│   └── Resources/
-│       ├── User/
-│       │   ├── UserResource.php
-│       │   └── Pages/
-│       │       ├── UserIndexPage.php
-│       │       ├── UserFormPage.php
-│       │       └── UserDetailPage.php
-│       └── EngineNotifReport/
-│           ├── EngineNotifReportResource.php
-│           └── Pages/
-│               ├── EngineNotifReportIndexPage.php  # Table + fetch manual
-│               └── EngineNotifReportDetailPage.php
-├── Providers/
-│   └── MoonShineServiceProvider.php
-routes/
-│   └── console.php                           # Definisi scheduler
-└── Services/
-    ├── ElasticsearchService.php              # Query ke Elasticsearch
-    └── EngineNotifReportService.php          # Fetch & simpan ke DB
+monitoring-laravel/
+├── app/
+│   ├── Console/
+│   │   └── Commands/
+│   │       ├── FetchEngineNotifReport.php       # Artisan command fetch Engine Notif
+│   │       └── FetchMteleplusReport.php          # Artisan command fetch mTeleplus
+│   ├── Models/
+│   │   ├── User.php
+│   │   ├── EngineNotifReport.php                # Model + accessor kalkulasi
+│   │   └── MteleplusReport.php                  # Model + accessor kalkulasi
+│   ├── MoonShine/
+│   │   ├── Layouts/
+│   │   │   └── MoonShineLayout.php              # Layout & konfigurasi menu
+│   │   ├── Pages/
+│   │   │   └── Dashboard.php
+│   │   └── Resources/
+│   │       ├── EngineNotifReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── EngineNotifReportIndexPage.php  # Table + chart + filter
+│   │       │   │   └── EngineNotifReportFetchPage.php  # Form fetch manual
+│   │       │   └── EngineNotifReportResource.php
+│   │       ├── MteleplusReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── MteleplusReportIndexPage.php    # Table + chart + filter
+│   │       │   │   └── MteleplusReportFetchPage.php    # Form fetch manual
+│   │       │   └── MteleplusReportResource.php
+│   │       ├── MoonShineUser/
+│   │       │   │   ├── MoonShineUserFormPage.php
+│   │       │   │   └── MoonShineUserIndexPage.php
+│   │       │   └── MoonShineUserResource.php
+│   │       ├── MoonShineUserRole/
+│   │       │   ├── Pages/
+│   │       │   │   ├── MoonShineUserRoleFormPage.php
+│   │       │   │   └── MoonShineUserRoleIndexPage.php
+│   │       │   └── MoonShineUserRoleResource.php
+│   │       └── User/
+│   │           ├── Pages/
+│   │           │   ├── UserDetailPage.php
+│   │           │   ├── UserFormPage.php
+│   │           │   └── UserIndexPage.php
+│   │           └── UserResource.php
+│   ├── Providers/
+│   │   ├── AppServiceProvider.php
+│   │   └── MoonShineServiceProvider.php
+│   └── Services/
+│       ├── ElasticsearchService.php             # Query ke Elasticsearch
+│       ├── EngineNotifReportService.php          # Fetch & simpan Engine Notif
+│       └── MteleplusReportService.php            # Fetch & simpan mTeleplus
+├── config/
+│   └── elasticsearch.php
+├── database/
+│   └── migrations/
+│       ├── 0001_01_01_000000_create_users_table.php
+│       ├── 0001_01_01_000001_create_cache_table.php
+│       ├── 0001_01_01_000002_create_jobs_table.php
+│       ├── 2020_10_04_115514_create_moonshine_roles_table.php
+│       ├── 2020_10_05_173148_create_moonshine_tables.php
+│       ├── 2026_05_22_014556_create_notifications_table.php
+│       ├── 2026_05_26_033044_create_engine_notif_reports_table.php
+│       └── 2026_06_04_140613_create_mteleplus_reports_table.php
+└── routes/
+    └── console.php                              # Definisi scheduler
 ```
 
 ---
@@ -73,7 +92,7 @@ routes/
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/username/monitoring-laravel.git
+git clone https://github.com/raafi-4z1/monitoring-laravel.git
 cd monitoring-laravel
 ```
 
@@ -90,13 +109,13 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Edit `.env` dan sesuaikan konfigurasi berikut:
+Edit `.env` dan sesuaikan:
 
 ```env
 # Database MySQL
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
-DB_PORT=89
+DB_PORT=3306
 DB_DATABASE=monitoring_laravel
 DB_USERNAME=root
 DB_PASSWORD=
@@ -107,31 +126,19 @@ ES_USERNAME=app
 ES_PASSWORD=app
 ```
 
-### 4. Buat Config Elasticsearch
-
-Buat file `config/elasticsearch.php`:
-
-```php
-return [
-    'host'     => env('ES_HOST', 'https://192.168.0.1:88'),
-    'username' => env('ES_USERNAME', 'app'),
-    'password' => env('ES_PASSWORD', 'app'),
-];
-```
-
-### 5. Migrasi Database
+### 4. Migrasi Database
 
 ```bash
 php artisan migrate
 ```
 
-### 6. Buat Admin MoonShine
+### 5. Buat Admin MoonShine
 
 ```bash
 php artisan moonshine:user
 ```
 
-### 7. Jalankan Server
+### 6. Jalankan Server
 
 ```bash
 php artisan serve
@@ -143,35 +150,37 @@ Akses admin panel di: `http://127.0.0.1:8000/admin`
 
 ## Scheduler
 
-### Konfigurasi (Laravel 12)
-
 Scheduler didefinisikan di `routes/console.php`:
 
 ```php
 use Illuminate\Support\Facades\Schedule;
 
-// Fetch data Elasticsearch setiap hari jam 00:05
 Schedule::command('report:fetch-engine-notif')
     ->dailyAt('00:05')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/engine-notif-fetch.log'));
+
+Schedule::command('report:fetch-mteleplus')
+    ->dailyAt('00:07')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/mteleplus-fetch.log'));
 ```
 
 ### Menjalankan Scheduler
 
-**Development (Windows/Laragon) — Task Scheduler:**
+**Development — Terminal:**
+
+```bash
+php artisan schedule:work
+```
+
+**Development (Windows) — Task Scheduler:**
 
 ```
 Program  : C:\laragon\bin\php\php-8.2\php.exe
 Arguments: artisan schedule:run
 Start in : C:\path\to\monitoring-laravel
 Repeat   : Every 1 minute
-```
-
-**Development — Terminal:**
-
-```bash
-php artisan schedule:work
 ```
 
 **Production (Linux) — Crontab:**
@@ -185,11 +194,11 @@ php artisan schedule:work
 ## Artisan Commands
 
 ```bash
-# Fetch data kemarin dari Elasticsearch (dijalankan scheduler otomatis)
+# Fetch Engine Notif kemarin dari Elasticsearch
 php artisan report:fetch-engine-notif
 
-# Fetch data tanggal tertentu
-php artisan report:fetch-engine-notif --date=2026-05-25
+# Fetch mTeleplus kemarin dari Elasticsearch
+php artisan report:fetch-mteleplus
 
 # Jalankan scheduler manual
 php artisan schedule:run
@@ -208,25 +217,28 @@ php artisan optimize:clear
 ```
 Elasticsearch
      │
-     ├─── Otomatis: scheduler setiap hari 00:05
-     │         │
-     │         ▼
-     │    FetchEngineNotifReport (Artisan Command)
+     ├── Otomatis: scheduler harian
+     │       ├── 00:05 → report:fetch-engine-notif
+     │       └── 00:07 → report:fetch-mteleplus
      │
-     └─── Manual: dari admin panel (rentang tanggal)
+     └── Manual: dari panel (form fetch per rentang tanggal)
                │
                ▼
-     EngineNotifReportService::fetchAndStore()
+     Service::fetchAndStore(Carbon $date)
                │
-               ▼
-     Database MySQL (engine_notif_reports)
-               │
-               ▼
-     MoonShine Admin Panel
-          ├── Filter DateRange
-          ├── Pagination & Sort
-          ├── Per Page (5/10/20/50/100)
-          └── Export Excel (.xlsx)
+               ├── ElasticsearchService::query...()
+               └── Model::updateOrCreate()
+                         │
+                         ▼
+               Database MySQL
+                         │
+                         ▼
+               MoonShine Panel
+                    ├── Table (filter, sort, pagination, export)
+                    └── Chart (Fragment async + withQueryParams)
+                         ├── ValueMetric
+                         ├── LineChartMetric
+                         └── DonutChartMetric
 ```
 
 ---
@@ -235,23 +247,24 @@ Elasticsearch
 
 ### `engine_notif_reports`
 
-> Kolom total (`mvrk_total`, `sms_total`, `email_total`, `total_success`, `total_fail`) **tidak disimpan di DB** — dihitung otomatis via **Eloquent Accessor** di model untuk menjaga normalisasi data.
+> Kolom total **tidak disimpan di DB** — dihitung via **Eloquent Accessor**.
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | `id` | bigint | Primary key |
 | `report_date` | date | Tanggal laporan (unique) |
-| `mvrk_success` | bigint | Jumlah MVRK berhasil |
-| `mvrk_fail` | bigint | Jumlah MVRK gagal |
-| `sms_success` | bigint | Jumlah SMS berhasil |
-| `sms_fail` | bigint | Jumlah SMS gagal |
-| `email_success` | bigint | Jumlah Email berhasil |
-| `email_fail` | bigint | Jumlah Email gagal |
+| `mvrk_success` | bigint | MVRK berhasil |
+| `mvrk_fail` | bigint | MVRK gagal |
+| `sms_success` | bigint | SMS berhasil |
+| `sms_fail` | bigint | SMS gagal |
+| `email_success` | bigint | Email berhasil |
+| `email_fail` | bigint | Email gagal |
 | `avg_response_time` | decimal(10,2) | Rata-rata response time (detik) |
-| `created_at` | timestamp | Waktu dibuat |
-| `updated_at` | timestamp | Waktu diupdate |
+| `avg_lifespan` | decimal(10,2) | Rata-rata lifespan (milidetik) |
+| `created_at` | timestamp | — |
+| `updated_at` | timestamp | — |
 
-**Kolom kalkulasi via Accessor (tidak di DB):**
+**Accessor (tidak di DB):**
 
 | Accessor | Kalkulasi |
 |---|---|
@@ -261,28 +274,51 @@ Elasticsearch
 | `total_success` | `mvrk_success + sms_success + email_success` |
 | `total_fail` | `mvrk_fail + sms_fail + email_fail` |
 
+### `mteleplus_reports`
+
+> Kolom total **tidak disimpan di DB** — dihitung via **Eloquent Accessor**.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | bigint | Primary key |
+| `report_date` | date | Tanggal laporan (unique) |
+| `akt_success` | bigint | AKT berhasil |
+| `akt_fail` | bigint | AKT gagal |
+| `rpin_success` | bigint | RPIN berhasil |
+| `rpin_fail` | bigint | RPIN gagal |
+| `total_incoming` | bigint | Total incoming |
+| `total_outgoing` | bigint | Total outgoing |
+| `created_at` | timestamp | — |
+| `updated_at` | timestamp | — |
+
+**Accessor (tidak di DB):**
+
+| Accessor | Kalkulasi |
+|---|---|
+| `akt_total` | `akt_success + akt_fail` |
+| `rpin_total` | `rpin_success + rpin_fail` |
+| `total_success` | `akt_success + rpin_success` |
+| `total_fail` | `akt_fail + rpin_fail` |
+
 ---
 
 ## Halaman Admin Panel
 
-### Dashboard (`/admin`)
-- 
+### Engine Notif Reports (`/MoonShine/resource/engine-notif-report-resource`)
 
-### Engine Notif Report (`/admin/resource/engine-notif-report-resource`)
-- Filter data berdasarkan rentang tanggal (`DateRange`)
-- Default filter: 2 minggu terakhir
-- Tabel laporan harian dengan pagination & sort per kolom
-- Dropdown per page (5 / 10 / 20 / 50 / 100)
-- Tombol **Export Excel** untuk download data sesuai filter
-- Form **Fetch Manual** — ambil data dari Elasticsearch berdasarkan rentang tanggal dan simpan ke DB
-- Info alert data terakhir yang tersimpan
+- Tabel harian
+- Dropdown per page (5/10/20/50/100) + sort per kolom + column selection
+- **Chart** (Fragment async, ikut filter)
+- **Fetch Manual** — form ambil data dari ES (maks 90 hari)
+- **Export Excel** — export sesuai filter aktif
 
-### Clients / Users (`/admin/resource/user-resource`)
-- CRUD user lengkap
-- Filter dan pencarian by name & email
-- Metrics: Total User, User Baru Bulan Ini, User Baru Hari Ini
-- Dropdown per page
-- Export Excel
+### mTeleplus Reports (`/MoonShine/resource/mteleplus-report-resource`)
+
+- Tabel harian
+- Dropdown per page (5/10/20/50/100) + sort per kolom + column selection
+- **Chart** (Fragment async, ikut filter)
+- **Fetch Manual** — form ambil data dari ES (maks 90 hari)
+- **Export Excel** — export sesuai filter aktif
 
 ---
 
@@ -293,6 +329,7 @@ Elasticsearch
     "php": "^8.2",
     "laravel/framework": "^12.0",
     "moonshine/moonshine": "^4.13",
-    "moonshine/import-export": "^2.0"
+    "moonshine/apexcharts": "^3.1",
+    "moonshine/import-export": "2.0.0"
 }
 ```

@@ -6,6 +6,7 @@ namespace App\MoonShine\Resources\User;
 
 use App\Models\User;
 use App\MoonShine\Resources\User\Pages\UserDetailPage;
+use App\MoonShine\Resources\User\Pages\UserFormPage;
 use App\MoonShine\Resources\User\Pages\UserIndexPage;
 use MoonShine\Contracts\Core\PageContract;
 use MoonShine\Crud\Handlers\Handler;
@@ -18,7 +19,7 @@ use MoonShine\UI\Fields\ID;
 use MoonShine\UI\Fields\Text;
 
 /**
- * @extends ModelResource<User, UserIndexPage, UserDetailPage>
+ * @extends ModelResource<User, UserIndexPage, UserFormPage, UserDetailPage>
  */
 class UserResource extends ModelResource implements HasImportExportContract
 {
@@ -69,7 +70,7 @@ class UserResource extends ModelResource implements HasImportExportContract
     {
         return [
             UserIndexPage::class,
-            // UserFormPage::class,
+            UserFormPage::class,
             UserDetailPage::class,
         ];
     }

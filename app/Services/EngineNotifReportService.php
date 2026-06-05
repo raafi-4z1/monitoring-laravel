@@ -27,8 +27,15 @@ class EngineNotifReportService
             [$emailS, $emailF] = $this->es->parseStatusBuckets(
                 $this->es->queryBySendingType(2, $dateStr, $dateStr)
             );
+
+            // ✅ Dari enginenotif-ttrx-*
             $avgRt = $this->es->parseAvgRtBuckets(
                 $this->es->queryAvgResponseTime($dateStr, $dateStr)
+            );
+
+            // ✅ Dari log-enginenotif*
+            $avgLifespan = $this->es->parseAvgLifespanBuckets(
+                $this->es->queryAvgLifespan($dateStr, $dateStr)
             );
 
             $ms = $mvrkS[$dateStr]  ?? 0;
@@ -38,7 +45,6 @@ class EngineNotifReportService
             $es = $emailS[$dateStr] ?? 0;
             $ef = $emailF[$dateStr] ?? 0;
 
-            // ✅ upsert agar tidak duplikat jika dijalankan ulang
             EngineNotifReport::updateOrCreate(
                 ['report_date' => $dateStr],
                 [
@@ -48,7 +54,8 @@ class EngineNotifReportService
                     'sms_fail'          => $sf,
                     'email_success'     => $es,
                     'email_fail'        => $ef,
-                    'avg_response_time' => round($avgRt[$dateStr] ?? 0, 2),
+                    'avg_response_time' => round($avgRt[$dateStr]       ?? 0, 2),
+                    'avg_lifespan'      => round($avgLifespan[$dateStr] ?? 0, 2),
                 ]
             );
 

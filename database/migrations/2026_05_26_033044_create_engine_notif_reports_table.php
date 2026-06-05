@@ -22,6 +22,7 @@ return new class extends Migration
             $table->unsignedBigInteger('email_fail')->default(0);
 
             $table->decimal('avg_response_time', 10, 2)->default(0);
+            $table->decimal('avg_lifespan', 10, 2)->default(0);
 
             $table->timestamps();
         });

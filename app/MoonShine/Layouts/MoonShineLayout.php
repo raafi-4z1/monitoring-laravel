@@ -12,6 +12,7 @@ use MoonShine\Contracts\ColorManager\ColorManagerContract;
 use MoonShine\Laravel\Layouts\AppLayout;
 use MoonShine\MenuManager\MenuGroup;
 use MoonShine\MenuManager\MenuItem;
+use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
 
 
 final class MoonShineLayout extends AppLayout
@@ -36,6 +37,8 @@ final class MoonShineLayout extends AppLayout
             
             MenuGroup::make('Elastic', [
                 MenuItem::make(EngineNotifReportResource::class, 'Engine Notif')
+                    ->Icon('chart-bar'),
+                MenuItem::make(MteleplusReportResource::class, 'Mteleplus Reports')
                     ->Icon('chart-bar'),
             ])->icon('circle-stack'),
         ];

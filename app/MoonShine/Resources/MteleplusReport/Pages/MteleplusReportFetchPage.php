@@ -16,11 +16,13 @@ use MoonShine\Support\Enums\JsEvent;
 use MoonShine\Support\Enums\ToastType;
 use MoonShine\UI\Components\ActionButton;
 use MoonShine\UI\Components\Alert;
+use MoonShine\UI\Components\FlexibleRender;
 use MoonShine\UI\Components\FormBuilder;
 use MoonShine\UI\Components\Heading;
 use MoonShine\UI\Components\Layout\Div;
 use MoonShine\UI\Components\Layout\Divider;
 use MoonShine\UI\Components\Layout\Flex;
+use MoonShine\UI\Components\Spinner;
 use MoonShine\UI\Fields\Date;
 use Throwable;
 
@@ -58,6 +60,8 @@ class MteleplusReportFetchPage extends FormPage
      */
     protected function mainLayer(): array
     {
+        $loadingXData = '{ loading: false, init() { const t = this; const f = this.$el.querySelector(\'form\'); if (f) { f.addEventListener(\'submit\', () => { t.loading = true; }); } const r = this.$el.querySelector(\'.async-fetch-result\'); if (r) { new MutationObserver(() => { t.loading = false; }).observe(r, { childList: true, subtree: true }); } const applyTheme = () => { const dark = t.$store.darkMode.on; const card = t.$el.querySelector(\'.loading-card\'); const txt = t.$el.querySelector(\'.loading-text\'); if (card) { card.style.background = dark ? \'rgba(30,30,40,.95)\' : \'rgba(255,255,255,.98)\'; card.style.boxShadow = dark ? \'0 25px 50px rgba(0,0,0,.5)\' : \'0 25px 50px rgba(0,0,0,.15)\'; } if (txt) { txt.style.color = dark ? \'white\' : \'#1f2937\'; } }; this.$nextTick(() => { applyTheme(); }); window.addEventListener(\'darkMode:toggle\', () => { applyTheme(); }); } }';
+
         return [
             Heading::make('Fetch Data mTeleplus dari Elasticsearch'),
 
@@ -69,38 +73,57 @@ class MteleplusReportFetchPage extends FormPage
 
             Divider::make(),
 
-            FormBuilder::make()
-                ->asyncMethod('fetchManual')
-                ->name('mteleplus-fetch-form')
-                ->fields([
-                    Flex::make([
-                        Date::make('Dari Tanggal', 'fetch_date_from')
-                            ->withoutWrapper()
-                            ->required()
-                            ->placeholder('Tanggal awal'),
-
-                        Date::make('Sampai Tanggal', 'fetch_date_to')
-                            ->withoutWrapper()
-                            ->required()
-                            ->placeholder('Tanggal akhir'),
-
-                        ActionButton::make('Fetch & Simpan ke DB')
-                            ->icon('arrow-down-tray')
-                            ->warning()
-                            ->customAttributes([
-                                'x-data'    => '{ loading: false }',
-                                '@click'    => 'loading = true',
-                                ':disabled' => 'loading',
-                                ':class'    => "{ 'opacity-50 cursor-not-allowed': loading }",
-                            ])
-                            ->dispatchEvent([
-                                AlpineJs::event(JsEvent::FORM_SUBMIT, 'mteleplus-fetch-form'),
-                            ]),
-                    ])->unwrap(),
+            Div::make([
+                Div::make([
+                    Div::make([
+                        Spinner::make('lg'),
+                        FlexibleRender::make('<p class="loading-text" style="font-size: 0.875rem; font-weight: 600; margin-top: 0.75rem;">Sedang mengambil data, mohon tunggu...</p>'),
+                    ])->class('loading-card')
+                      ->customAttributes(['style' => 'display: flex; flex-direction: column; align-items: center; padding: 2.5rem; border-radius: 1rem;']),
                 ])
-                ->hideSubmit(),
+                ->class('flex items-center justify-center')
+                ->customAttributes([
+                    'x-show'       => 'loading',
+                    'x-cloak'      => '',
+                    'x-transition' => '',
+                    'style'        => 'position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 9999; background: rgba(0,0,0,0.6);',
+                ]),
 
-            Div::make([])->class('async-fetch-result'),
+                FormBuilder::make()
+                    ->asyncMethod('fetchManual')
+                    ->name('mteleplus-fetch-form')
+                    ->fields([
+                        Flex::make([
+                            Date::make('Dari Tanggal', 'fetch_date_from')
+                                ->withoutWrapper()
+                                ->required()
+                                ->placeholder('Tanggal awal'),
+
+                            Date::make('Sampai Tanggal', 'fetch_date_to')
+                                ->withoutWrapper()
+                                ->required()
+                                ->placeholder('Tanggal akhir'),
+
+                            ActionButton::make('Fetch & Simpan ke DB')
+                                ->icon('arrow-down-tray')
+                                ->warning()
+                                ->customAttributes([
+                                    ':disabled' => 'loading',
+                                    ':class'    => "{ 'opacity-50 cursor-not-allowed': loading }",
+                                ])
+                                ->dispatchEvent([
+                                    AlpineJs::event(JsEvent::FORM_SUBMIT, 'mteleplus-fetch-form'),
+                                ]),
+                        ])->unwrap(),
+                    ])
+                    ->hideSubmit(),
+
+                Div::make([])->class('async-fetch-result'),
+            ])
+            ->customAttributes([
+                'x-data'                  => $loadingXData,
+                '@moonshine:toast.window' => 'loading = false',
+            ]),
         ];
     }
 

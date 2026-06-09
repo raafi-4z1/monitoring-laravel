@@ -150,11 +150,11 @@ class ElasticsearchService
             'query' => [
                 'bool' => [
                     'must' => [
-                        [
-                            'term' => [
-                                'realm.keyword' => 'stdout'
-                            ]
-                        ],
+                        // [
+                        //     'term' => [
+                        //         'realm.keyword' => 'stdout'
+                        //     ]
+                        // ],
                         [
                             'range' => [
                                 'date_origin' => [

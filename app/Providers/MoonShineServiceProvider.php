@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\EngineNotifReport\Pages\EngineNotifReportFetchPage;
 use App\MoonShine\Resources\MoonShineUser\MoonShineUserResource;
@@ -30,6 +31,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 UserResource::class,
                 EngineNotifReportResource::class,
                 MteleplusReportResource::class,
+                AppMetricResource::class,
             ])
             ->pages([
                 ...$core->getConfig()->getPages(),

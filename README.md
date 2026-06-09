@@ -8,6 +8,7 @@ Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang menginteg
 
 - **Engine Notif Report** — laporan harian Engine Notif dari Elasticsearch
 - **mTeleplus Report** — laporan harian mTeleplus dari Elasticsearch
+- **App Metrics** — input manual metrik server (CPU, Memory, Disk, dll.) dengan grafik per jenis metrik
 - **Chart Interaktif** — LineChart & DonutChart via ApexCharts, ikut filter DateRange
 - **Scheduler Otomatis** — fetch data dari Elasticsearch setiap hari otomatis
 - **Fetch Manual** — ambil data rentang tanggal tertentu langsung dari admin panel
@@ -47,6 +48,11 @@ monitoring-laravel/
 │   │       │   │   ├── MteleplusReportIndexPage.php    # Table + chart + filter
 │   │       │   │   └── MteleplusReportFetchPage.php    # Form fetch manual
 │   │       │   └── MteleplusReportResource.php
+│   │       ├── AppMetric/
+│   │       │   ├── Pages/
+│   │       │   │   ├── AppMetricIndexPage.php      # Table + grafik per metrik
+│   │       │   │   └── AppMetricFormPage.php       # Form input manual metrik
+│   │       │   └── AppMetricResource.php
 │   │       ├── MoonShineUser/
 │   │       │   │   ├── MoonShineUserFormPage.php
 │   │       │   │   └── MoonShineUserIndexPage.php
@@ -80,7 +86,9 @@ monitoring-laravel/
 │       ├── 2020_10_05_173148_create_moonshine_tables.php
 │       ├── 2026_05_22_014556_create_notifications_table.php
 │       ├── 2026_05_26_033044_create_engine_notif_reports_table.php
-│       └── 2026_06_04_140613_create_mteleplus_reports_table.php
+│       ├── 2026_06_04_140613_create_mteleplus_reports_table.php
+│       ├── 2026_06_09_000001_create_app_metrics_table.php
+│       └── 2026_06_09_000002_update_app_metrics_recorded_at_microseconds.php
 └── routes/
     └── console.php                              # Definisi scheduler
 ```
@@ -274,6 +282,21 @@ Elasticsearch
 | `total_success` | `mvrk_success + sms_success + email_success` |
 | `total_fail` | `mvrk_fail + sms_fail + email_fail` |
 
+### `app_metrics`
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | bigint | Primary key |
+| `recorded_at` | timestamp(6) | Waktu pencatatan (microsecond precision, auto-unique) |
+| `nama_aplikasi` | varchar | Nama aplikasi — disimpan **UPPERCASE** otomatis |
+| `metric` | varchar | Jenis metrik (CPU, MEMORY, dll.) — **UPPERCASE** otomatis |
+| `value` | varchar | Nilai metrik (mis. `75`, `2.4`) |
+| `satuan` | varchar | Satuan metrik (mis. `%`, `GB`, `ms`) |
+| `created_at` | timestamp | — |
+| `updated_at` | timestamp | — |
+
+> **Catatan:** Second dan microsecond pada `recorded_at` diisi otomatis dari waktu saat menyimpan — user hanya perlu memilih tanggal, jam, dan menit.
+
 ### `mteleplus_reports`
 
 > Kolom total **tidak disimpan di DB** — dihitung via **Eloquent Accessor**.
@@ -319,6 +342,15 @@ Elasticsearch
 - **Chart** (Fragment async, ikut filter)
 - **Fetch Manual** — form ambil data dari ES (maks 90 hari)
 - **Export Excel** — export sesuai filter aktif
+
+### App Metrics (`/MoonShine/resource/app-metric-resource`)
+
+- Input manual metrik server (CPU, Memory, Disk, Response Time, dll.)
+- Timestamp otomatis dengan presisi microsecond (`TIMESTAMP(6)`) — tidak akan pernah duplikat meskipun input di menit yang sama
+- Nama aplikasi & metrik disimpan **uppercase** otomatis
+- **Grafik per jenis metrik** — setiap metrik (CPU, MEMORY, dll.) mendapat LineChart sendiri, satu garis per aplikasi
+- Filter DateRange (default 7 hari terakhir) + filter aplikasi & metrik
+- Dropdown per page + column selection
 
 ---
 

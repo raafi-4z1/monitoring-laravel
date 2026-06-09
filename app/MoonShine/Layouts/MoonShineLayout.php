@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Layouts;
 
+use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\User\UserResource;
 use MoonShine\ColorManager\ColorManager;
@@ -41,6 +42,8 @@ final class MoonShineLayout extends AppLayout
                 MenuItem::make(MteleplusReportResource::class, 'Mteleplus Reports')
                     ->Icon('chart-bar'),
             ])->icon('circle-stack'),
+            MenuItem::make(AppMetricResource::class, 'App Metric')
+                ->Icon('chart-bar'),
         ];
     }
 

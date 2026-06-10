@@ -11,14 +11,21 @@ use App\MoonShine\Resources\MoonShineUser\MoonShineUserResource;
 use App\MoonShine\Resources\MoonShineUserRole\MoonShineUserRoleResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
 use App\MoonShine\Resources\MteleplusReport\Pages\MteleplusReportFetchPage;
-use App\MoonShine\Resources\User\UserResource;
 use Illuminate\Support\ServiceProvider;
 use MoonShine\Contracts\Core\DependencyInjection\CoreContract;
 use MoonShine\Laravel\DependencyInjection\MoonShineConfigurator;
+use MoonShine\Laravel\Models\MoonshineUser;
+use MoonShine\Support\Enums\Ability;
 
 
 class MoonShineServiceProvider extends ServiceProvider
 {
+    // Resources yang hanya bisa diakses role Admin (id=1)
+    private const ADMIN_ONLY_RESOURCES = [
+        MoonShineUserResource::class,
+        MoonShineUserRoleResource::class,
+    ];
+
     /**
      * @param  CoreContract<MoonShineConfigurator>  $core
      */
@@ -28,7 +35,6 @@ class MoonShineServiceProvider extends ServiceProvider
             ->resources([
                 MoonShineUserResource::class,
                 MoonShineUserRoleResource::class,
-                UserResource::class,
                 EngineNotifReportResource::class,
                 MteleplusReportResource::class,
                 AppMetricResource::class,
@@ -38,5 +44,19 @@ class MoonShineServiceProvider extends ServiceProvider
                 EngineNotifReportFetchPage::class,
                 MteleplusReportFetchPage::class,
             ]);
+
+        $core->getConfig()->authorizationRules(
+            static function ($resource, $user, Ability $ability, $item): bool {
+                if (! $user instanceof MoonshineUser) {
+                    return true;
+                }
+
+                if ($user->isSuperUser()) {
+                    return true;
+                }
+
+                return ! in_array(get_class($resource), self::ADMIN_ONLY_RESOURCES, true);
+            }
+        );
     }
 }

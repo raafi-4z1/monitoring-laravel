@@ -47,13 +47,13 @@ class AppMetric extends Model
         });
     }
 
-    public function setNamaAplikasiAttribute(string $value): void
+    public function setNamaAplikasiAttribute(?string $value): void
     {
-        $this->attributes['nama_aplikasi'] = strtoupper(trim($value));
+        $this->attributes['nama_aplikasi'] = $value !== null ? strtoupper(trim($value)) : null;
     }
 
-    public function setMetricAttribute(string $value): void
+    public function setMetricAttribute(?string $value): void
     {
-        $this->attributes['metric'] = strtoupper(trim($value));
+        $this->attributes['metric'] = $value !== null ? strtoupper(trim($value)) : null;
     }
 }

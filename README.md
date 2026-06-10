@@ -15,7 +15,7 @@ Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang menginteg
 - **Filter Tanggal** — filter data berdasarkan rentang tanggal dengan `DateRange`
 - **Pagination & Sort** — navigasi data dengan dropdown per page dan pengurutan kolom
 - **Export Excel** — export data ke file `.xlsx` bawaan MoonShine
-- **User Management** — manajemen user dengan CRUD lengkap
+- **Role-based Access** — dua role panel: **Admin** (akses penuh termasuk manajemen user & role) dan **User** (hanya akses laporan); semua panel users dikelola dari satu tempat
 
 ---
 
@@ -30,6 +30,7 @@ monitoring-laravel/
 │   │       └── FetchMteleplusReport.php          # Artisan command fetch mTeleplus
 │   ├── Models/
 │   │   ├── User.php
+│   │   ├── AppMetric.php                        # Model metrik + microsecond timestamp
 │   │   ├── EngineNotifReport.php                # Model + accessor kalkulasi
 │   │   └── MteleplusReport.php                  # Model + accessor kalkulasi
 │   ├── MoonShine/
@@ -54,20 +55,15 @@ monitoring-laravel/
 │   │       │   │   └── AppMetricFormPage.php       # Form input manual metrik
 │   │       │   └── AppMetricResource.php
 │   │       ├── MoonShineUser/
+│   │       │   ├── Pages/
 │   │       │   │   ├── MoonShineUserFormPage.php
 │   │       │   │   └── MoonShineUserIndexPage.php
-│   │       │   └── MoonShineUserResource.php
-│   │       ├── MoonShineUserRole/
-│   │       │   ├── Pages/
-│   │       │   │   ├── MoonShineUserRoleFormPage.php
-│   │       │   │   └── MoonShineUserRoleIndexPage.php
-│   │       │   └── MoonShineUserRoleResource.php
-│   │       └── User/
+│   │       │   └── MoonShineUserResource.php    # Panel user management (aktif)
+│   │       └── MoonShineUserRole/
 │   │           ├── Pages/
-│   │           │   ├── UserDetailPage.php
-│   │           │   ├── UserFormPage.php
-│   │           │   └── UserIndexPage.php
-│   │           └── UserResource.php
+│   │           │   ├── MoonShineUserRoleFormPage.php
+│   │           │   └── MoonShineUserRoleIndexPage.php
+│   │           └── MoonShineUserRoleResource.php # Role management (aktif)
 │   ├── Providers/
 │   │   ├── AppServiceProvider.php
 │   │   └── MoonShineServiceProvider.php
@@ -88,7 +84,8 @@ monitoring-laravel/
 │       ├── 2026_05_26_033044_create_engine_notif_reports_table.php
 │       ├── 2026_06_04_140613_create_mteleplus_reports_table.php
 │       ├── 2026_06_09_000001_create_app_metrics_table.php
-│       └── 2026_06_09_000002_update_app_metrics_recorded_at_microseconds.php
+│       ├── 2026_06_09_000002_update_app_metrics_recorded_at_microseconds.php
+│       └── 2026_06_10_000001_add_role_and_avatar_to_users_table.php
 └── routes/
     └── console.php                              # Definisi scheduler
 ```
@@ -140,11 +137,13 @@ ES_PASSWORD=app
 php artisan migrate
 ```
 
-### 5. Buat Admin MoonShine
+### 5. Buat Admin Panel
 
 ```bash
 php artisan moonshine:user
 ```
+
+Perintah ini membuat akun pertama dengan role **Admin** untuk login ke panel. Jalankan sekali saat fresh install.
 
 ### 6. Jalankan Server
 
@@ -325,9 +324,32 @@ Elasticsearch
 
 ---
 
+## Role Panel
+
+| Role | Akses |
+|---|---|
+| **Admin** | Semua halaman: Manajemen (Users & Roles) + Elastic + App Metrics |
+| **User** | Hanya laporan: Elastic (Engine Notif, mTeleplus) + App Metrics |
+
+Admin dibuat via `php artisan moonshine:user`. User tambahan dibuat dari **Manajemen → Admins** di panel.
+
+---
+
 ## Halaman Admin Panel
 
-### Engine Notif Reports (`/MoonShine/resource/engine-notif-report-resource`)
+### Manajemen (khusus Admin)
+
+**Admins** (`/admin/resource/moon-shine-user-resource`)
+
+- CRUD panel users (nama, email, password, role)
+- Tambah user baru dengan role Admin atau User
+
+**User Roles** (`/admin/resource/moon-shine-user-role-resource`)
+
+- CRUD definisi role (nama role)
+- Default: Admin (id=1), User (id=2)
+
+### Engine Notif Reports (`/admin/resource/engine-notif-report-resource`)
 
 - Tabel harian
 - Dropdown per page (5/10/20/50/100) + sort per kolom + column selection
@@ -335,7 +357,7 @@ Elasticsearch
 - **Fetch Manual** — form ambil data dari ES (maks 90 hari)
 - **Export Excel** — export sesuai filter aktif
 
-### mTeleplus Reports (`/MoonShine/resource/mteleplus-report-resource`)
+### mTeleplus Reports (`/admin/resource/mteleplus-report-resource`)
 
 - Tabel harian
 - Dropdown per page (5/10/20/50/100) + sort per kolom + column selection
@@ -343,7 +365,7 @@ Elasticsearch
 - **Fetch Manual** — form ambil data dari ES (maks 90 hari)
 - **Export Excel** — export sesuai filter aktif
 
-### App Metrics (`/MoonShine/resource/app-metric-resource`)
+### App Metrics (`/admin/resource/app-metric-resource`)
 
 - Input manual metrik server (CPU, Memory, Disk, Response Time, dll.)
 - Timestamp otomatis dengan presisi microsecond (`TIMESTAMP(6)`) — tidak akan pernah duplikat meskipun input di menit yang sama

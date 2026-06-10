@@ -83,9 +83,9 @@ class AppMetricIndexPage extends IndexPage
     protected function filters(): iterable
     {
         return [
-            // DateRange::make('Timestamp', 'recorded_at'),
-            // Text::make('Aplikasi', 'nama_aplikasi'),
-            // Text::make('Metrik', 'metric'),
+            DateRange::make('Timestamp', 'recorded_at'),
+            Text::make('Aplikasi', 'nama_aplikasi'),
+            Text::make('Metrik', 'metric'),
         ];
     }
 
@@ -188,6 +188,12 @@ class AppMetricIndexPage extends IndexPage
            ?? request()->input('filter.recorded_at.to')
            ?? now()->format('Y-m-d');
 
+        $namaAplikasi = request()->input('_data.filter.nama_aplikasi')
+                     ?? request()->input('filter.nama_aplikasi');
+
+        $metric = request()->input('_data.filter.metric')
+               ?? request()->input('filter.metric');
+
         $dateFrom = !empty($from) ? $from : now()->subDays(6)->format('Y-m-d');
         $dateTo   = !empty($to)   ? $to   : now()->format('Y-m-d');
 
@@ -195,13 +201,21 @@ class AppMetricIndexPage extends IndexPage
                 . ' – '
                 . Carbon::parse($dateTo)->format('d M Y');
 
-        $data = AppMetric::query()
+        $query = AppMetric::query()
             ->whereBetween('recorded_at', [
                 Carbon::parse($dateFrom)->startOfDay(),
                 Carbon::parse($dateTo)->endOfDay(),
-            ])
-            ->orderBy('recorded_at')
-            ->get();
+            ]);
+
+        if (!empty($namaAplikasi)) {
+            $query->where('nama_aplikasi', 'LIKE', '%' . strtoupper(trim($namaAplikasi)) . '%');
+        }
+
+        if (!empty($metric)) {
+            $query->where('metric', 'LIKE', '%' . strtoupper(trim($metric)) . '%');
+        }
+
+        $data = $query->orderBy('recorded_at')->get();
 
         return [$dateFrom, $dateTo, $period, $data];
     }

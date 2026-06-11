@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\AppMetric\Pages;
 
+use App\Enums\MetricType;
 use App\Models\AppMetric;
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use Carbon\Carbon;
@@ -85,7 +86,9 @@ class AppMetricIndexPage extends IndexPage
         return [
             DateRange::make('Timestamp', 'recorded_at'),
             Text::make('Aplikasi', 'nama_aplikasi'),
-            Text::make('Metrik', 'metric'),
+            Select::make('Metrik', 'metric')
+                ->options(MetricType::options())
+                ->nullable(),
         ];
     }
 
@@ -212,7 +215,7 @@ class AppMetricIndexPage extends IndexPage
         }
 
         if (!empty($metric)) {
-            $query->where('metric', 'LIKE', '%' . strtoupper(trim($metric)) . '%');
+            $query->where('metric', strtoupper(trim($metric)));
         }
 
         $data = $query->orderBy('recorded_at')->get();

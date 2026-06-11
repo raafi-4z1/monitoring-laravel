@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\AppMetric\Pages;
 
+use App\Enums\MetricType;
+use App\Enums\MetricUnit;
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
+use Illuminate\Validation\Rule;
 use MoonShine\Contracts\Core\TypeCasts\DataWrapperContract;
 use MoonShine\Contracts\UI\ComponentContract;
 use MoonShine\Contracts\UI\FieldContract;
@@ -13,6 +16,7 @@ use MoonShine\UI\Components\Layout\Box;
 use MoonShine\UI\Components\Layout\Column;
 use MoonShine\UI\Components\Layout\Grid;
 use MoonShine\UI\Fields\Date;
+use MoonShine\UI\Fields\Select;
 use MoonShine\UI\Fields\Text;
 use Throwable;
 
@@ -38,23 +42,24 @@ class AppMetricFormPage extends FormPage
                             ->customAttributes(['step' => '1'])
                             ->default(now()->format('Y-m-d\TH:i:s'))
                             ->required()
-                            ->hint('Diisi otomatis. Milidetik ditambahkan otomatis saat menyimpan.'),
+                            ->hint('Milidetik ditambahkan otomatis saat menyimpan.'),
 
                         Text::make('Nama Aplikasi', 'nama_aplikasi')
                             ->required()
-                            ->placeholder('mis. MTELE, ENGINE-NOTIF, API-GATEWAY'),
+                            ->placeholder('mis. MTELEPLUS, ENGINE-NOTIF'),
 
-                        Text::make('Metrik', 'metric')
+                        Select::make('Metrik', 'metric')
+                            ->options(MetricType::options())
                             ->required()
-                            ->placeholder('mis. CPU, MEMORY, DISK, RESPONSE_TIME'),
+                            ->searchable(),
 
                         Text::make('Value', 'value')
                             ->required()
-                            ->placeholder('mis. 75, 2.4, 512'),
+                            ->placeholder('mis. 75.4, 2.1, 512'),
 
-                        Text::make('Satuan', 'satuan')
-                            ->required()
-                            ->placeholder('mis. %, GB, MB, ms'),
+                        Select::make('Satuan', 'satuan')
+                            ->options(MetricUnit::options())
+                            ->required(),
                     ]),
                 ])->columnSpan(6),
             ]),
@@ -66,9 +71,9 @@ class AppMetricFormPage extends FormPage
         return [
             'recorded_at'   => 'required|date',
             'nama_aplikasi' => 'required|string|max:255',
-            'metric'        => 'required|string|max:255',
+            'metric'        => ['required', Rule::in(MetricType::values())],
             'value'         => 'required|string|max:255',
-            'satuan'        => 'required|string|max:50',
+            'satuan'        => ['required', Rule::in(MetricUnit::values())],
         ];
     }
 

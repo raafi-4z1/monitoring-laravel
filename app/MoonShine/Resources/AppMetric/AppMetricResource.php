@@ -7,6 +7,7 @@ namespace App\MoonShine\Resources\AppMetric;
 use App\Models\AppMetric;
 use App\MoonShine\Resources\AppMetric\Pages\AppMetricFormPage;
 use App\MoonShine\Resources\AppMetric\Pages\AppMetricIndexPage;
+use Illuminate\Database\Eloquent\Builder;
 use MoonShine\Contracts\Core\PageContract;
 use MoonShine\Laravel\Resources\ModelResource;
 
@@ -16,8 +17,13 @@ use MoonShine\Laravel\Resources\ModelResource;
 class AppMetricResource extends ModelResource
 {
     protected string $model  = AppMetric::class;
-    protected string $column = 'nama_aplikasi';
+    protected string $column = 'id';
     protected string $title  = 'App Metrics';
+
+    protected function resolveQuery(): Builder
+    {
+        return AppMetric::with(['masterAplikasi', 'masterMetrik']);
+    }
 
     protected string $sortColumn    = 'recorded_at';
     protected int    $itemsPerPage  = 25;

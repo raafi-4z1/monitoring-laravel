@@ -9,13 +9,16 @@ Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang menginteg
 - **Engine Notif Report** — laporan harian Engine Notif dari Elasticsearch
 - **mTeleplus Report** — laporan harian mTeleplus dari Elasticsearch
 - **App Metrics** — input manual metrik server (CPU, Memory, Disk, dll.) dengan grafik per jenis metrik
-- **Chart Interaktif** — LineChart & DonutChart via ApexCharts, ikut filter DateRange
+- **Master Aplikasi** — manajemen daftar nama aplikasi (CRUD + soft-delete, khusus Admin)
+- **Master Metrik** — manajemen daftar jenis metrik beserta satuan default (CRUD + soft-delete, khusus Admin)
+- **Chart Interaktif** — LineChart via ApexCharts, dikelompokkan per jenis metrik & aplikasi, ikut filter DateRange
+- **Reactive Form** — saat memilih metrik, kolom satuan otomatis terisi dari `satuan_default` master metrik
 - **Scheduler Otomatis** — fetch data dari Elasticsearch setiap hari otomatis
 - **Fetch Manual** — ambil data rentang tanggal tertentu langsung dari admin panel
 - **Filter Tanggal** — filter data berdasarkan rentang tanggal dengan `DateRange`
 - **Pagination & Sort** — navigasi data dengan dropdown per page dan pengurutan kolom
 - **Export Excel** — export data ke file `.xlsx` bawaan MoonShine
-- **Role-based Access** — dua role panel: **Admin** (akses penuh termasuk manajemen user & role) dan **User** (hanya akses laporan); semua panel users dikelola dari satu tempat
+- **Role-based Access** — dua role panel: **Admin** (akses penuh termasuk manajemen user, role, dan master data) dan **User** (hanya akses laporan & app metrics)
 
 ---
 
@@ -26,51 +29,64 @@ monitoring-laravel/
 ├── app/
 │   ├── Console/
 │   │   └── Commands/
-│   │       ├── FetchEngineNotifReport.php       # Artisan command fetch Engine Notif
-│   │       └── FetchMteleplusReport.php          # Artisan command fetch mTeleplus
+│   │       ├── FetchEngineNotifReport.php
+│   │       └── FetchMteleplusReport.php
+│   ├── Enums/
+│   │   └── MetricUnit.php                       # Enum satuan metrik (%, GB, MB/s, ms, dst.)
 │   ├── Models/
-│   │   ├── User.php
-│   │   ├── AppMetric.php                        # Model metrik + microsecond timestamp
-│   │   ├── EngineNotifReport.php                # Model + accessor kalkulasi
-│   │   └── MteleplusReport.php                  # Model + accessor kalkulasi
+│   │   ├── AppMetric.php                        # Relasi ke MasterAplikasi & MasterMetrik
+│   │   ├── MasterAplikasi.php                   # Soft-delete, nama auto-UPPERCASE
+│   │   ├── MasterMetrik.php                     # Soft-delete, nama auto-UPPERCASE
+│   │   ├── EngineNotifReport.php
+│   │   └── MteleplusReport.php
 │   ├── MoonShine/
 │   │   ├── Layouts/
-│   │   │   └── MoonShineLayout.php              # Layout & konfigurasi menu
+│   │   │   └── MoonShineLayout.php              # Layout & menu (canSee per role)
 │   │   ├── Pages/
 │   │   │   └── Dashboard.php
 │   │   └── Resources/
+│   │       ├── AppMetric/
+│   │       │   ├── Pages/
+│   │       │   │   ├── AppMetricIndexPage.php   # Table + grafik + filter FK
+│   │       │   │   └── AppMetricFormPage.php    # Form + reactive satuan
+│   │       │   └── AppMetricResource.php        # Eager load masterAplikasi & masterMetrik
+│   │       ├── MasterAplikasi/
+│   │       │   ├── Pages/
+│   │       │   │   ├── MasterAplikasiIndexPage.php  # QueryTag Aktif/Sampah + restore
+│   │       │   │   └── MasterAplikasiFormPage.php
+│   │       │   └── MasterAplikasiResource.php
+│   │       ├── MasterMetrik/
+│   │       │   ├── Pages/
+│   │       │   │   ├── MasterMetrikIndexPage.php    # QueryTag Aktif/Sampah + restore
+│   │       │   │   └── MasterMetrikFormPage.php     # Select satuan dari MetricUnit enum
+│   │       │   └── MasterMetrikResource.php
 │   │       ├── EngineNotifReport/
 │   │       │   ├── Pages/
-│   │       │   │   ├── EngineNotifReportIndexPage.php  # Table + chart + filter
-│   │       │   │   └── EngineNotifReportFetchPage.php  # Form fetch manual
+│   │       │   │   ├── EngineNotifReportIndexPage.php
+│   │       │   │   └── EngineNotifReportFetchPage.php
 │   │       │   └── EngineNotifReportResource.php
 │   │       ├── MteleplusReport/
 │   │       │   ├── Pages/
-│   │       │   │   ├── MteleplusReportIndexPage.php    # Table + chart + filter
-│   │       │   │   └── MteleplusReportFetchPage.php    # Form fetch manual
+│   │       │   │   ├── MteleplusReportIndexPage.php
+│   │       │   │   └── MteleplusReportFetchPage.php
 │   │       │   └── MteleplusReportResource.php
-│   │       ├── AppMetric/
-│   │       │   ├── Pages/
-│   │       │   │   ├── AppMetricIndexPage.php      # Table + grafik per metrik
-│   │       │   │   └── AppMetricFormPage.php       # Form input manual metrik
-│   │       │   └── AppMetricResource.php
 │   │       ├── MoonShineUser/
 │   │       │   ├── Pages/
 │   │       │   │   ├── MoonShineUserFormPage.php
 │   │       │   │   └── MoonShineUserIndexPage.php
-│   │       │   └── MoonShineUserResource.php    # Panel user management (aktif)
+│   │       │   └── MoonShineUserResource.php
 │   │       └── MoonShineUserRole/
 │   │           ├── Pages/
 │   │           │   ├── MoonShineUserRoleFormPage.php
 │   │           │   └── MoonShineUserRoleIndexPage.php
-│   │           └── MoonShineUserRoleResource.php # Role management (aktif)
+│   │           └── MoonShineUserRoleResource.php
 │   ├── Providers/
 │   │   ├── AppServiceProvider.php
-│   │   └── MoonShineServiceProvider.php
+│   │   └── MoonShineServiceProvider.php         # authorizationRules per resource
 │   └── Services/
-│       ├── ElasticsearchService.php             # Query ke Elasticsearch
-│       ├── EngineNotifReportService.php          # Fetch & simpan Engine Notif
-│       └── MteleplusReportService.php            # Fetch & simpan mTeleplus
+│       ├── ElasticsearchService.php
+│       ├── EngineNotifReportService.php
+│       └── MteleplusReportService.php
 ├── config/
 │   └── elasticsearch.php
 ├── database/
@@ -85,7 +101,10 @@ monitoring-laravel/
 │       ├── 2026_06_04_140613_create_mteleplus_reports_table.php
 │       ├── 2026_06_09_000001_create_app_metrics_table.php
 │       ├── 2026_06_09_000002_update_app_metrics_recorded_at_microseconds.php
-│       └── 2026_06_10_000001_add_role_and_avatar_to_users_table.php
+│       ├── 2026_06_10_000001_add_role_and_avatar_to_users_table.php
+│       ├── 2026_06_12_000001_create_master_tables.php          # master_aplikasi + master_metrik
+│       ├── 2026_06_12_145700_add_master_relations_to_app_metrics_table.php  # FK + backfill
+│       └── 2026_06_12_150800_drop_string_columns_from_app_metrics_table.php # hapus kolom string
 └── routes/
     └── console.php                              # Definisi scheduler
 ```
@@ -243,14 +262,64 @@ Elasticsearch
                MoonShine Panel
                     ├── Table (filter, sort, pagination, export)
                     └── Chart (Fragment async + withQueryParams)
-                         ├── ValueMetric
-                         ├── LineChartMetric
-                         └── DonutChartMetric
+                              └── LineChartMetric (per jenis metrik, per aplikasi)
 ```
 
 ---
 
 ## Struktur Tabel Database
+
+### `master_aplikasi`
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | bigint | Primary key |
+| `nama` | varchar | Nama aplikasi — unique, auto-UPPERCASE |
+| `keterangan` | varchar | Keterangan opsional |
+| `deleted_at` | timestamp | Soft-delete |
+| `created_at` | timestamp | — |
+| `updated_at` | timestamp | — |
+
+### `master_metrik`
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | bigint | Primary key |
+| `nama` | varchar | Nama metrik — unique, auto-UPPERCASE |
+| `satuan_default` | varchar | Satuan default (%, GB, MB/s, ms, dst.) |
+| `keterangan` | varchar | Keterangan opsional |
+| `deleted_at` | timestamp | Soft-delete |
+| `created_at` | timestamp | — |
+| `updated_at` | timestamp | — |
+
+**Seed awal (9 metrik):**
+
+| Nama | Satuan |
+|---|---|
+| CPU | % |
+| MEMORY | % |
+| DISK | % |
+| NETWORK_IN | MB/s |
+| NETWORK_OUT | MB/s |
+| LOAD_1M | - |
+| LOAD_5M | - |
+| LOAD_15M | - |
+| RESPONSE_TIME | ms |
+
+### `app_metrics`
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | bigint | Primary key |
+| `recorded_at` | timestamp(6) | Waktu pencatatan — microsecond precision, auto-unique |
+| `master_aplikasi_id` | bigint | FK → `master_aplikasi.id` |
+| `master_metrik_id` | bigint | FK → `master_metrik.id` |
+| `value` | varchar | Nilai metrik (mis. `75`, `2.4`) |
+| `satuan` | varchar | Satuan metrik — auto-terisi dari master saat input |
+| `created_at` | timestamp | — |
+| `updated_at` | timestamp | — |
+
+> **Catatan:** Second dan microsecond pada `recorded_at` diisi otomatis saat menyimpan — user hanya memilih tanggal, jam, dan menit.
 
 ### `engine_notif_reports`
 
@@ -271,30 +340,7 @@ Elasticsearch
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
-**Accessor (tidak di DB):**
-
-| Accessor | Kalkulasi |
-|---|---|
-| `mvrk_total` | `mvrk_success + mvrk_fail` |
-| `sms_total` | `sms_success + sms_fail` |
-| `email_total` | `email_success + email_fail` |
-| `total_success` | `mvrk_success + sms_success + email_success` |
-| `total_fail` | `mvrk_fail + sms_fail + email_fail` |
-
-### `app_metrics`
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | bigint | Primary key |
-| `recorded_at` | timestamp(6) | Waktu pencatatan (microsecond precision, auto-unique) |
-| `nama_aplikasi` | varchar | Nama aplikasi — disimpan **UPPERCASE** otomatis |
-| `metric` | varchar | Jenis metrik (CPU, MEMORY, dll.) — **UPPERCASE** otomatis |
-| `value` | varchar | Nilai metrik (mis. `75`, `2.4`) |
-| `satuan` | varchar | Satuan metrik (mis. `%`, `GB`, `ms`) |
-| `created_at` | timestamp | — |
-| `updated_at` | timestamp | — |
-
-> **Catatan:** Second dan microsecond pada `recorded_at` diisi otomatis dari waktu saat menyimpan — user hanya perlu memilih tanggal, jam, dan menit.
+**Accessor:** `mvrk_total`, `sms_total`, `email_total`, `total_success`, `total_fail`
 
 ### `mteleplus_reports`
 
@@ -313,66 +359,50 @@ Elasticsearch
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
-**Accessor (tidak di DB):**
-
-| Accessor | Kalkulasi |
-|---|---|
-| `akt_total` | `akt_success + akt_fail` |
-| `rpin_total` | `rpin_success + rpin_fail` |
-| `total_success` | `akt_success + rpin_success` |
-| `total_fail` | `akt_fail + rpin_fail` |
+**Accessor:** `akt_total`, `rpin_total`, `total_success`, `total_fail`
 
 ---
 
 ## Role Panel
 
-| Role | Akses |
+| Role | Menu yang Terlihat |
 |---|---|
-| **Admin** | Semua halaman: Manajemen (Users & Roles) + Elastic + App Metrics |
-| **User** | Hanya laporan: Elastic (Engine Notif, mTeleplus) + App Metrics |
+| **Admin** | Manajemen (Users, Roles) + App Metric (Data Metrik, Master Aplikasi, Master Metrik) + Elastic |
+| **User** | App Metric (Data Metrik saja) + Elastic |
 
-Admin dibuat via `php artisan moonshine:user`. User tambahan dibuat dari **Manajemen → Admins** di panel.
+- Admin dibuat via `php artisan moonshine:user`
+- User tambahan dibuat dari **Manajemen → Admins** di panel
+- Akses ke resource Master Aplikasi/Metrik dan Manajemen User/Role diblokir secara server-side untuk role User
 
 ---
 
 ## Halaman Admin Panel
 
-### Manajemen (khusus Admin)
+### Menu: Manajemen (khusus Admin)
 
-**Admins** (`/admin/resource/moon-shine-user-resource`)
+**Admins** — CRUD panel users (nama, email, password, role)
 
-- CRUD panel users (nama, email, password, role)
-- Tambah user baru dengan role Admin atau User
+**User Roles** — CRUD definisi role; default: Admin (id=1), User (id=2)
 
-**User Roles** (`/admin/resource/moon-shine-user-role-resource`)
+### Menu: App Metric
 
-- CRUD definisi role (nama role)
-- Default: Admin (id=1), User (id=2)
+**Data Metrik** (`/admin/resource/app-metric-resource`)
 
-### Engine Notif Reports (`/admin/resource/engine-notif-report-resource`)
-
-- Tabel harian
-- Dropdown per page (5/10/20/50/100) + sort per kolom + column selection
-- **Chart** (Fragment async, ikut filter)
-- **Fetch Manual** — form ambil data dari ES (maks 90 hari)
-- **Export Excel** — export sesuai filter aktif
-
-### mTeleplus Reports (`/admin/resource/mteleplus-report-resource`)
-
-- Tabel harian
-- Dropdown per page (5/10/20/50/100) + sort per kolom + column selection
-- **Chart** (Fragment async, ikut filter)
-- **Fetch Manual** — form ambil data dari ES (maks 90 hari)
-- **Export Excel** — export sesuai filter aktif
-
-### App Metrics (`/admin/resource/app-metric-resource`)
-
-- Input manual metrik server (CPU, Memory, Disk, Response Time, dll.)
-- Timestamp otomatis dengan presisi microsecond (`TIMESTAMP(6)`) — tidak akan pernah duplikat meskipun input di menit yang sama
-- Nama aplikasi & metrik disimpan **uppercase** otomatis
-- **Grafik per jenis metrik** — setiap metrik (CPU, MEMORY, dll.) mendapat LineChart sendiri, satu garis per aplikasi
-- Filter DateRange (default 7 hari terakhir) + filter aplikasi & metrik
+- Tabel data metrik dengan kolom Timestamp, Aplikasi, Metrik, Value, Satuan
+- Filter DateRange (default 7 hari terakhir) + filter dropdown Aplikasi & Metrik dari master
 - Dropdown per page + column selection
+- **Form tambah:** pilih aplikasi & metrik dari dropdown master; satuan auto-terisi saat metrik dipilih (reactive), bisa diubah manual
+- **Grafik:** satu LineChart per jenis metrik, satu series per aplikasi
+
+**Master Aplikasi** (khusus Admin) — CRUD daftar nama aplikasi; soft-delete dengan tab Sampah & tombol Pulihkan
+
+**Master Metrik** (khusus Admin) — CRUD jenis metrik + satuan default; soft-delete dengan tab Sampah & tombol Pulihkan
+
+### Menu: Elastic
+
+**Engine Notif Reports** — tabel harian, chart, fetch manual, export Excel
+
+**Mteleplus Reports** — tabel harian, chart, fetch manual, export Excel
 
 ---
 

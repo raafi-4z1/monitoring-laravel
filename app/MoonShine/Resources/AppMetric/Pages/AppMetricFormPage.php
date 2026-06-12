@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\AppMetric\Pages;
 
-use App\Enums\MetricType;
 use App\Enums\MetricUnit;
+use App\Models\MasterAplikasi;
+use App\Models\MasterMetrik;
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use Illuminate\Validation\Rule;
 use MoonShine\Contracts\Core\TypeCasts\DataWrapperContract;
 use MoonShine\Contracts\UI\ComponentContract;
 use MoonShine\Contracts\UI\FieldContract;
+use MoonShine\Laravel\Collections\Fields;
 use MoonShine\Laravel\Pages\Crud\FormPage;
 use MoonShine\UI\Components\Layout\Box;
 use MoonShine\UI\Components\Layout\Column;
@@ -34,7 +36,7 @@ class AppMetricFormPage extends FormPage
         return [
             Grid::make([
                 Column::make([
-                    Box::make('Data Metrik', [
+                    Box::make('Data Metric', [
                         Date::make('Timestamp', 'recorded_at')
                             ->withTime()
                             ->inputFormat("Y-m-d\TH:i:s")
@@ -44,14 +46,33 @@ class AppMetricFormPage extends FormPage
                             ->required()
                             ->hint('Milidetik ditambahkan otomatis saat menyimpan.'),
 
-                        Text::make('Nama Aplikasi', 'nama_aplikasi')
-                            ->required()
-                            ->placeholder('mis. MTELEPLUS, ENGINE-NOTIF'),
-
-                        Select::make('Metrik', 'metric')
-                            ->options(MetricType::options())
+                        Select::make('Nama Aplikasi', 'master_aplikasi_id')
+                            ->options(
+                                MasterAplikasi::pluck('nama', 'id')->toArray()
+                            )
                             ->required()
                             ->searchable(),
+
+                        Select::make('Metrik', 'master_metrik_id')
+                            ->options(
+                                MasterMetrik::pluck('nama', 'id')->toArray()
+                            )
+                            ->required()
+                            ->searchable()
+                            ->reactive(function (Fields $fields, mixed $value): Fields {
+                                $satuanDefault = MasterMetrik::find($value)?->satuan_default ?? '';
+
+                                $fields->each(function ($field) use ($satuanDefault): void {
+                                    if (
+                                        $field instanceof FieldContract
+                                        && $field->getColumn() === 'satuan'
+                                    ) {
+                                        $field->setValue($satuanDefault);
+                                    }
+                                });
+
+                                return $fields;
+                            }),
 
                         Text::make('Value', 'value')
                             ->required()
@@ -59,7 +80,8 @@ class AppMetricFormPage extends FormPage
 
                         Select::make('Satuan', 'satuan')
                             ->options(MetricUnit::options())
-                            ->required(),
+                            ->required()
+                            ->hint('Otomatis terisi saat metrik dipilih, bisa diubah manual.'),
                     ]),
                 ])->columnSpan(6),
             ]),
@@ -69,11 +91,11 @@ class AppMetricFormPage extends FormPage
     protected function rules(DataWrapperContract $item): array
     {
         return [
-            'recorded_at'   => 'required|date',
-            'nama_aplikasi' => 'required|string|max:255',
-            'metric'        => ['required', Rule::in(MetricType::values())],
-            'value'         => 'required|string|max:255',
-            'satuan'        => ['required', Rule::in(MetricUnit::values())],
+            'recorded_at'        => 'required|date',
+            'master_aplikasi_id' => 'required|integer|exists:master_aplikasi,id',
+            'master_metrik_id'   => 'required|integer|exists:master_metrik,id',
+            'value'              => 'required|string|max:255',
+            'satuan'             => ['required', Rule::in(MetricUnit::values())],
         ];
     }
 

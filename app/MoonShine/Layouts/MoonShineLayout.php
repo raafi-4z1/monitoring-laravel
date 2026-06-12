@@ -6,6 +6,8 @@ namespace App\MoonShine\Layouts;
 
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
+use App\MoonShine\Resources\MasterAplikasi\MasterAplikasiResource;
+use App\MoonShine\Resources\MasterMetrik\MasterMetrikResource;
 use App\MoonShine\Resources\MoonShineUser\MoonShineUserResource;
 use App\MoonShine\Resources\MoonShineUserRole\MoonShineUserRoleResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
@@ -38,23 +40,28 @@ final class MoonShineLayout extends AppLayout
             auth(moonshineConfig()->getGuard())->user()?->isSuperUser() ?? false;
 
         return [
-            // Manajemen users & roles — hanya admin
+            // Manajemen user — hanya admin
             MenuGroup::make('Manajemen', [
                 MenuItem::make(MoonShineUserResource::class)->icon('users'),
                 MenuItem::make(MoonShineUserRoleResource::class)->icon('shield-check'),
-            ])->icon('users')->canSee($isAdmin),
+            ])->icon('cog-6-tooth')->canSee($isAdmin),
+
+            // App Metric — semua role; master hanya admin
+            MenuGroup::make('App Metric', [
+                MenuItem::make(AppMetricResource::class, 'Data Metric')->icon('chart-bar'),
+                MenuItem::make(MasterAplikasiResource::class)->icon('server')
+                    ->canSee($isAdmin),
+                MenuItem::make(MasterMetrikResource::class)->icon('beaker')
+                    ->canSee($isAdmin),
+            ])->icon('presentation-chart-line'),
 
             // Elastic reports — semua role
             MenuGroup::make('Elastic', [
                 MenuItem::make(EngineNotifReportResource::class, 'Engine Notif')
-                    ->Icon('chart-bar'),
+                    ->icon('chart-bar'),
                 MenuItem::make(MteleplusReportResource::class, 'Mteleplus Reports')
-                    ->Icon('chart-bar'),
+                    ->icon('chart-bar'),
             ])->icon('circle-stack'),
-
-            // App Metrics — semua role
-            MenuItem::make(AppMetricResource::class, 'App Metric')
-                ->Icon('chart-bar'),
         ];
     }
 

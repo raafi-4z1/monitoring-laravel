@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\AppMetric\Pages;
 
-use App\Enums\MetricType;
 use App\Models\AppMetric;
+use App\Models\MasterAplikasi;
+use App\Models\MasterMetrik;
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -32,7 +33,6 @@ use MoonShine\UI\Fields\Date;
 use MoonShine\UI\Fields\DateRange;
 use MoonShine\UI\Fields\Preview;
 use MoonShine\UI\Fields\Select;
-use MoonShine\UI\Fields\Text;
 use Throwable;
 
 
@@ -61,8 +61,8 @@ class AppMetricIndexPage extends IndexPage
                 ->format('d M Y H:i:s')
                 ->sortable(),
 
-            Text::make('Aplikasi', 'nama_aplikasi')->sortable(),
-            Text::make('Metrik', 'metric')->sortable(),
+            Preview::make('Aplikasi', 'master_aplikasi_id', static fn($original) => $original?->masterAplikasi?->nama ?? '-'),
+            Preview::make('Metrik', 'master_metrik_id', static fn($original) => $original?->masterMetrik?->nama ?? '-'),
             Preview::make('Value', 'value'),
             Preview::make('Satuan', 'satuan'),
         ];
@@ -85,9 +85,11 @@ class AppMetricIndexPage extends IndexPage
     {
         return [
             DateRange::make('Timestamp', 'recorded_at'),
-            Text::make('Aplikasi', 'nama_aplikasi'),
-            Select::make('Metrik', 'metric')
-                ->options(MetricType::options())
+            Select::make('Aplikasi', 'master_aplikasi_id')
+                ->options(MasterAplikasi::pluck('nama', 'id')->toArray())
+                ->nullable(),
+            Select::make('Metrik', 'master_metrik_id')
+                ->options(MasterMetrik::pluck('nama', 'id')->toArray())
                 ->nullable(),
         ];
     }
@@ -172,13 +174,19 @@ class AppMetricIndexPage extends IndexPage
 
     private function latestEntryAlert(): Alert
     {
-        $latest = AppMetric::latest('recorded_at')->first();
+        $latest = AppMetric::with(['masterAplikasi', 'masterMetrik'])->latest('recorded_at')->first();
 
-        return $latest
-            ? Alert::make(type: 'info')
-                ->content("Data terakhir: <strong>{$latest->nama_aplikasi} / {$latest->metric}</strong> — {$latest->recorded_at->format('d M Y H:i')}")
-            : Alert::make(type: 'warning')
+        if (! $latest) {
+            return Alert::make(type: 'warning')
                 ->content('Belum ada data. Gunakan tombol <strong>Tambah Metrik</strong> untuk input manual.');
+        }
+
+        $appName    = $latest->masterAplikasi?->nama ?? '-';
+        $metrikName = $latest->masterMetrik?->nama ?? '-';
+        $time       = $latest->recorded_at->format('d M Y H:i');
+
+        return Alert::make(type: 'info')
+            ->content("Data terakhir: <strong>{$appName} / {$metrikName}</strong> — {$time}");
     }
 
     private function getFilteredData(): array
@@ -191,11 +199,11 @@ class AppMetricIndexPage extends IndexPage
            ?? request()->input('filter.recorded_at.to')
            ?? now()->format('Y-m-d');
 
-        $namaAplikasi = request()->input('_data.filter.nama_aplikasi')
-                     ?? request()->input('filter.nama_aplikasi');
+        $masterAplikasiId = request()->input('_data.filter.master_aplikasi_id')
+                         ?? request()->input('filter.master_aplikasi_id');
 
-        $metric = request()->input('_data.filter.metric')
-               ?? request()->input('filter.metric');
+        $masterMetrikId = request()->input('_data.filter.master_metrik_id')
+                       ?? request()->input('filter.master_metrik_id');
 
         $dateFrom = !empty($from) ? $from : now()->subDays(6)->format('Y-m-d');
         $dateTo   = !empty($to)   ? $to   : now()->format('Y-m-d');
@@ -204,18 +212,18 @@ class AppMetricIndexPage extends IndexPage
                 . ' – '
                 . Carbon::parse($dateTo)->format('d M Y');
 
-        $query = AppMetric::query()
+        $query = AppMetric::with(['masterAplikasi', 'masterMetrik'])
             ->whereBetween('recorded_at', [
                 Carbon::parse($dateFrom)->startOfDay(),
                 Carbon::parse($dateTo)->endOfDay(),
             ]);
 
-        if (!empty($namaAplikasi)) {
-            $query->where('nama_aplikasi', 'LIKE', '%' . strtoupper(trim($namaAplikasi)) . '%');
+        if (!empty($masterAplikasiId)) {
+            $query->where('master_aplikasi_id', (int) $masterAplikasiId);
         }
 
-        if (!empty($metric)) {
-            $query->where('metric', strtoupper(trim($metric)));
+        if (!empty($masterMetrikId)) {
+            $query->where('master_metrik_id', (int) $masterMetrikId);
         }
 
         $data = $query->orderBy('recorded_at')->get();
@@ -234,13 +242,17 @@ class AppMetricIndexPage extends IndexPage
             ]);
         }
 
-        // Kelompokkan per jenis metrik (CPU, MEMORY, dll.)
-        $byMetric     = $data->groupBy('metric');
+        // Ambil satuan dari master_metrik sebagai sumber utama
+        $masterSatuan = MasterMetrik::pluck('satuan_default', 'nama')->toArray();
+
+        // Group by nama metrik dari relasi
+        $byMetric     = $data->groupBy(static fn($r) => $r->masterMetrik?->nama ?? 'UNKNOWN');
         $chartColumns = [];
 
         foreach ($byMetric as $metricName => $records) {
-            $byApp  = $records->groupBy('nama_aplikasi');
-            $satuan = $records->first()?->satuan ?? '';
+            // Group by nama aplikasi dari relasi
+            $byApp  = $records->groupBy(static fn($r) => $r->masterAplikasi?->nama ?? 'UNKNOWN');
+            $satuan = $masterSatuan[$metricName] ?? $records->first()?->satuan ?? '';
             $title  = $metricName . ($satuan !== '' ? " ({$satuan})" : '');
 
             $chart = LineChartMetric::make($title);

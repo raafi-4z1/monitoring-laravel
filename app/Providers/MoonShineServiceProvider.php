@@ -7,6 +7,8 @@ namespace App\Providers;
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\EngineNotifReport\Pages\EngineNotifReportFetchPage;
+use App\MoonShine\Resources\MasterAplikasi\MasterAplikasiResource;
+use App\MoonShine\Resources\MasterMetrik\MasterMetrikResource;
 use App\MoonShine\Resources\MoonShineUser\MoonShineUserResource;
 use App\MoonShine\Resources\MoonShineUserRole\MoonShineUserRoleResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
@@ -24,6 +26,8 @@ class MoonShineServiceProvider extends ServiceProvider
     private const ADMIN_ONLY_RESOURCES = [
         MoonShineUserResource::class,
         MoonShineUserRoleResource::class,
+        MasterAplikasiResource::class,
+        MasterMetrikResource::class,
     ];
 
     /**
@@ -35,6 +39,8 @@ class MoonShineServiceProvider extends ServiceProvider
             ->resources([
                 MoonShineUserResource::class,
                 MoonShineUserRoleResource::class,
+                MasterAplikasiResource::class,
+                MasterMetrikResource::class,
                 EngineNotifReportResource::class,
                 MteleplusReportResource::class,
                 AppMetricResource::class,

@@ -6,13 +6,14 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AppMetric extends Model
 {
     protected $fillable = [
         'recorded_at',
-        'nama_aplikasi',
-        'metric',
+        'master_aplikasi_id',
+        'master_metrik_id',
         'value',
         'satuan',
     ];
@@ -47,13 +48,14 @@ class AppMetric extends Model
         });
     }
 
-    public function setNamaAplikasiAttribute(?string $value): void
+    public function masterAplikasi(): BelongsTo
     {
-        $this->attributes['nama_aplikasi'] = $value !== null ? strtoupper(trim($value)) : null;
+        return $this->belongsTo(MasterAplikasi::class);
     }
 
-    public function setMetricAttribute(?string $value): void
+    public function masterMetrik(): BelongsTo
     {
-        $this->attributes['metric'] = $value !== null ? strtoupper(trim($value)) : null;
+        return $this->belongsTo(MasterMetrik::class);
     }
+
 }

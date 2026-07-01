@@ -256,6 +256,139 @@ class ElasticsearchService
         ]);
     }
     
+    // ✅ Query TrxPBI Limit dari wic-trx-pbi-ceklimit* per jam, dikelompokkan per CCY2
+    public function queryTrxPbiLimit(string $dateFrom, string $dateTo): array
+    {
+        return $this->search('wic-trx-pbi-ceklimit*', [
+            'size'  => 0,
+            'query' => [
+                'range' => [
+                    'RequestTime' => [
+                        'gte'       => $dateFrom . 'T00:00:00.000',
+                        'lte'       => $dateTo . 'T23:59:59.999',
+                        'time_zone' => '+07:00',
+                    ],
+                ],
+            ],
+            'aggs' => [
+                'per_hour' => [
+                    'date_histogram' => [
+                        'field'             => 'RequestTime',
+                        'calendar_interval' => '1h',
+                        'format'            => 'yyyy-MM-dd HH:mm',
+                        'time_zone'         => '+07:00',
+                        'min_doc_count'     => 1,
+                    ],
+                    'aggs' => [
+                        'by_ccy2' => [
+                            'terms' => [
+                                'field' => 'CCY2.keyword',
+                                'size'  => 100,
+                            ],
+                            'aggs' => [
+                                'total_nominal' => [
+                                    'sum' => ['field' => 'Nominal'],
+                                ],
+                                'total_nominal_eq_usd' => [
+                                    'sum' => ['field' => 'NominalEqUSD'],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    // ✅ Query TrxPBI Settlement dari log-wic-trx-pbi* per jam, dikelompokkan per CCY2
+    public function queryTrxPbiSettlement(string $dateFrom, string $dateTo): array
+    {
+        return $this->search('log-wic-trx-pbi*', [
+            'size'  => 0,
+            'query' => [
+                'range' => [
+                    'DateTime' => [
+                        'gte'       => $dateFrom . 'T00:00:00.000',
+                        'lte'       => $dateTo . 'T23:59:59.999',
+                        'time_zone' => '+07:00',
+                    ],
+                ],
+            ],
+            'aggs' => [
+                'per_hour' => [
+                    'date_histogram' => [
+                        'field'             => 'DateTime',
+                        'calendar_interval' => '1h',
+                        'format'            => 'yyyy-MM-dd HH:mm',
+                        'time_zone'         => '+07:00',
+                        'min_doc_count'     => 1,
+                    ],
+                    'aggs' => [
+                        'by_ccy2' => [
+                            'terms' => [
+                                'field' => 'CCY2.keyword',
+                                'size'  => 100,
+                            ],
+                            'aggs' => [
+                                'total_nominal' => [
+                                    'sum' => ['field' => 'Nominal'],
+                                ],
+                                'total_nominal_eq_usd' => [
+                                    'sum' => ['field' => 'NominalEqUSD'],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    public function parseTrxPbiSettlement(array $result): array
+    {
+        $buckets = $result['aggregations']['per_hour']['buckets'] ?? [];
+        $parsed  = [];
+
+        foreach ($buckets as $bucket) {
+            $hour          = $bucket['key_as_string'];
+            $parsed[$hour] = [];
+
+            foreach ($bucket['by_ccy2']['buckets'] ?? [] as $ccyBucket) {
+                $parsed[$hour][] = [
+                    'ccy2'                 => $ccyBucket['key'],
+                    'total_trx'            => $ccyBucket['doc_count'],
+                    'total_nominal'        => $ccyBucket['total_nominal']['value'] ?? 0,
+                    'total_nominal_eq_usd' => $ccyBucket['total_nominal_eq_usd']['value'] ?? 0,
+                ];
+            }
+        }
+
+        return $parsed;
+    }
+
+    public function parseTrxPbiLimit(array $result): array
+    {
+        $buckets = $result['aggregations']['per_hour']['buckets'] ?? [];
+        $parsed  = [];
+
+        foreach ($buckets as $bucket) {
+            // key_as_string = "2026-07-01 07:00"
+            $hour          = $bucket['key_as_string'];
+            $parsed[$hour] = [];
+
+            foreach ($bucket['by_ccy2']['buckets'] ?? [] as $ccyBucket) {
+                $parsed[$hour][] = [
+                    'ccy2'                 => $ccyBucket['key'],
+                    'total_trx'            => $ccyBucket['doc_count'],
+                    'total_nominal'        => $ccyBucket['total_nominal']['value'] ?? 0,
+                    'total_nominal_eq_usd' => $ccyBucket['total_nominal_eq_usd']['value'] ?? 0,
+                ];
+            }
+        }
+
+        return $parsed;
+    }
+
     public function parseMteleplus(array $result): array
     {
         $buckets = $result['aggregations']['per_day']['buckets'] ?? [];

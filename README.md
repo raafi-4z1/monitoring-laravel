@@ -8,13 +8,15 @@ Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang menginteg
 
 - **Engine Notif Report** — laporan harian Engine Notif dari Elasticsearch
 - **mTeleplus Report** — laporan harian mTeleplus dari Elasticsearch
+- **TrxPBI Limit Report** — laporan per jam transaksi WIC PBI Cek Limit (index `wic-trx-pbi-ceklimit*`), dikelompokkan per CCY2
+- **TrxPBI Settlement Report** — laporan per jam transaksi WIC PBI Settlement (index `log-wic-trx-pbi*`), dikelompokkan per CCY2
 - **App Metrics** — input manual metrik server (CPU, Memory, Disk, dll.) dengan grafik per jenis metrik
 - **Master Aplikasi** — manajemen daftar nama aplikasi (CRUD + soft-delete, khusus Admin)
 - **Master Metrik** — manajemen daftar jenis metrik beserta satuan default (CRUD + soft-delete, khusus Admin)
-- **Chart Interaktif** — LineChart via ApexCharts, dikelompokkan per jenis metrik & aplikasi, ikut filter DateRange
+- **Chart Interaktif** — LineChart & DonutChart via ApexCharts, dikelompokkan per CCY2 / per jenis metrik, ikut filter DateRange
 - **Reactive Form** — saat memilih metrik, kolom satuan otomatis terisi dari `satuan_default` master metrik
 - **Scheduler Otomatis** — fetch data dari Elasticsearch setiap hari otomatis
-- **Fetch Manual** — ambil data rentang tanggal tertentu langsung dari admin panel
+- **Fetch Manual** — ambil data rentang tanggal tertentu langsung dari admin panel (maks 90 hari)
 - **Filter Tanggal** — filter data berdasarkan rentang tanggal dengan `DateRange`
 - **Pagination & Sort** — navigasi data dengan dropdown per page dan pengurutan kolom
 - **Export Excel** — export data ke file `.xlsx` bawaan MoonShine
@@ -30,7 +32,9 @@ monitoring-laravel/
 │   ├── Console/
 │   │   └── Commands/
 │   │       ├── FetchEngineNotifReport.php
-│   │       └── FetchMteleplusReport.php
+│   │       ├── FetchMteleplusReport.php
+│   │       ├── FetchTrxPbiLimitReport.php
+│   │       └── FetchTrxPbiSettlementReport.php
 │   ├── Enums/
 │   │   └── MetricUnit.php                       # Enum satuan metrik (%, GB, MB/s, ms, dst.)
 │   ├── Models/
@@ -38,7 +42,9 @@ monitoring-laravel/
 │   │   ├── MasterAplikasi.php                   # Soft-delete, nama auto-UPPERCASE
 │   │   ├── MasterMetrik.php                     # Soft-delete, nama auto-UPPERCASE
 │   │   ├── EngineNotifReport.php
-│   │   └── MteleplusReport.php
+│   │   ├── MteleplusReport.php
+│   │   ├── TrxPbiLimitReport.php                # Per jam per CCY2, index wic-trx-pbi-ceklimit*
+│   │   └── TrxPbiSettlementReport.php           # Per jam per CCY2, index log-wic-trx-pbi*
 │   ├── MoonShine/
 │   │   ├── Layouts/
 │   │   │   └── MoonShineLayout.php              # Layout & menu (canSee per role)
@@ -70,6 +76,16 @@ monitoring-laravel/
 │   │       │   │   ├── MteleplusReportIndexPage.php
 │   │       │   │   └── MteleplusReportFetchPage.php
 │   │       │   └── MteleplusReportResource.php
+│   │       ├── TrxPbiLimitReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── TrxPbiLimitReportIndexPage.php   # Table + 7 chart per jam per CCY2
+│   │       │   │   └── TrxPbiLimitReportFetchPage.php   # Fetch manual, maks 90 hari
+│   │       │   └── TrxPbiLimitReportResource.php
+│   │       ├── TrxPbiSettlementReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── TrxPbiSettlementReportIndexPage.php
+│   │       │   │   └── TrxPbiSettlementReportFetchPage.php
+│   │       │   └── TrxPbiSettlementReportResource.php
 │   │       ├── MoonShineUser/
 │   │       │   ├── Pages/
 │   │       │   │   ├── MoonShineUserFormPage.php
@@ -84,9 +100,11 @@ monitoring-laravel/
 │   │   ├── AppServiceProvider.php
 │   │   └── MoonShineServiceProvider.php         # authorizationRules per resource
 │   └── Services/
-│       ├── ElasticsearchService.php
+│       ├── ElasticsearchService.php             # query & parse per index (Engine Notif, Mteleplus, TrxPBI Limit, TrxPBI Settlement)
 │       ├── EngineNotifReportService.php
-│       └── MteleplusReportService.php
+│       ├── MteleplusReportService.php
+│       ├── TrxPbiLimitReportService.php
+│       └── TrxPbiSettlementReportService.php
 ├── config/
 │   └── elasticsearch.php
 ├── database/
@@ -102,9 +120,12 @@ monitoring-laravel/
 │       ├── 2026_06_09_000001_create_app_metrics_table.php
 │       ├── 2026_06_09_000002_update_app_metrics_recorded_at_microseconds.php
 │       ├── 2026_06_10_000001_add_role_and_avatar_to_users_table.php
-│       ├── 2026_06_12_000001_create_master_tables.php          # master_aplikasi + master_metrik
-│       ├── 2026_06_12_145700_add_master_relations_to_app_metrics_table.php  # FK + backfill
-│       └── 2026_06_12_150800_drop_string_columns_from_app_metrics_table.php # hapus kolom string
+│       ├── 2026_06_12_000001_create_master_tables.php
+│       ├── 2026_06_12_145700_add_master_relations_to_app_metrics_table.php
+│       ├── 2026_06_12_150800_drop_string_columns_from_app_metrics_table.php
+│       ├── 2026_07_01_000001_create_trx_pbi_limit_reports_table.php
+│       ├── 2026_07_01_000002_recreate_trx_pbi_limit_reports_hourly.php   # per-jam + unique(report_hour, ccy2)
+│       └── 2026_07_01_000003_create_trx_pbi_settlement_reports_table.php
 └── routes/
     └── console.php                              # Definisi scheduler
 ```
@@ -190,6 +211,16 @@ Schedule::command('report:fetch-mteleplus')
     ->dailyAt('00:07')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/mteleplus-fetch.log'));
+
+Schedule::command('report:fetch-trx-pbi-limit')
+    ->dailyAt('00:09')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/trx-pbi-limit-fetch.log'));
+
+Schedule::command('report:fetch-trx-pbi-settlement')
+    ->dailyAt('00:11')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/trx-pbi-settlement-fetch.log'));
 ```
 
 ### Menjalankan Scheduler
@@ -226,6 +257,12 @@ php artisan report:fetch-engine-notif
 # Fetch mTeleplus kemarin dari Elasticsearch
 php artisan report:fetch-mteleplus
 
+# Fetch TrxPBI Limit kemarin dari Elasticsearch
+php artisan report:fetch-trx-pbi-limit
+
+# Fetch TrxPBI Settlement kemarin dari Elasticsearch
+php artisan report:fetch-trx-pbi-settlement
+
 # Jalankan scheduler manual
 php artisan schedule:run
 
@@ -245,24 +282,28 @@ Elasticsearch
      │
      ├── Otomatis: scheduler harian
      │       ├── 00:05 → report:fetch-engine-notif
-     │       └── 00:07 → report:fetch-mteleplus
+     │       ├── 00:07 → report:fetch-mteleplus
+     │       ├── 00:09 → report:fetch-trx-pbi-limit
+     │       └── 00:11 → report:fetch-trx-pbi-settlement
      │
-     └── Manual: dari panel (form fetch per rentang tanggal)
+     └── Manual: dari panel (form fetch per rentang tanggal, maks 90 hari)
                │
                ▼
      Service::fetchAndStore(Carbon $date)
                │
-               ├── ElasticsearchService::query...()
-               └── Model::updateOrCreate()
+               ├── ElasticsearchService::query...()     ← agregasi per jam / per hari
+               └── Model::updateOrCreate()              ← upsert unique key
                          │
                          ▼
                Database MySQL
                          │
                          ▼
                MoonShine Panel
-                    ├── Table (filter, sort, pagination, export)
+                    ├── Table (filter, sort, pagination, export Excel)
                     └── Chart (Fragment async + withQueryParams)
-                              └── LineChartMetric (per jenis metrik, per aplikasi)
+                              ├── ValueMetric  (Total Trx, Total NominalEqUSD, Total Nominal)
+                              ├── LineChartMetric (per jam per CCY2)
+                              └── DonutChartMetric (distribusi per CCY2)
 ```
 
 ---
@@ -361,6 +402,40 @@ Elasticsearch
 
 **Accessor:** `akt_total`, `rpin_total`, `total_success`, `total_fail`
 
+### `trx_pbi_limit_reports`
+
+> Data diambil dari index Elasticsearch **`wic-trx-pbi-ceklimit*`**, field waktu: `RequestTime` (UTC → WIB +07:00).
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | bigint | Primary key |
+| `report_hour` | datetime | Jam transaksi (WIB, dibulatkan ke awal jam) |
+| `ccy2` | varchar | Kode mata uang tujuan (contoh: `USD`, `SGD`) |
+| `total_trx` | integer | Jumlah transaksi dalam jam tersebut |
+| `total_nominal` | float | Total nominal transaksi |
+| `total_nominal_eq_usd` | float | Total nominal setara USD |
+| `created_at` | timestamp | — |
+| `updated_at` | timestamp | — |
+
+**Unique key:** `(report_hour, ccy2)` — upsert otomatis saat fetch ulang
+
+### `trx_pbi_settlement_reports`
+
+> Data diambil dari index Elasticsearch **`log-wic-trx-pbi*`**, field waktu: `DateTime` (UTC → WIB +07:00).
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | bigint | Primary key |
+| `report_hour` | datetime | Jam transaksi (WIB, dibulatkan ke awal jam) |
+| `ccy2` | varchar | Kode mata uang tujuan (contoh: `USD`, `SGD`) |
+| `total_trx` | integer | Jumlah transaksi dalam jam tersebut |
+| `total_nominal` | float | Total nominal transaksi |
+| `total_nominal_eq_usd` | float | Total nominal setara USD |
+| `created_at` | timestamp | — |
+| `updated_at` | timestamp | — |
+
+**Unique key:** `(report_hour, ccy2)` — upsert otomatis saat fetch ulang
+
 ---
 
 ## Role Panel
@@ -403,6 +478,10 @@ Elasticsearch
 **Engine Notif Reports** — tabel harian, chart, fetch manual, export Excel
 
 **Mteleplus Reports** — tabel harian, chart, fetch manual, export Excel
+
+**TrxPBI Limit** — tabel per jam per CCY2, 7 chart interaktif (3 ValueMetric + 2 LineChart + 2 DonutChart), fetch manual, export Excel
+
+**TrxPBI Settlement** — tabel per jam per CCY2, 7 chart interaktif (3 ValueMetric + 2 LineChart + 2 DonutChart), fetch manual, export Excel
 
 ---
 

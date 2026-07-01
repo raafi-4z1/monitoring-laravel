@@ -11,6 +11,8 @@ use App\MoonShine\Resources\MasterMetrik\MasterMetrikResource;
 use App\MoonShine\Resources\MoonShineUser\MoonShineUserResource;
 use App\MoonShine\Resources\MoonShineUserRole\MoonShineUserRoleResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
+use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
+use App\MoonShine\Resources\TrxPbiSettlementReport\TrxPbiSettlementReportResource;
 use MoonShine\ColorManager\ColorManager;
 use MoonShine\ColorManager\Palettes\PurplePalette;
 use MoonShine\Contracts\ColorManager\ColorManagerContract;
@@ -61,6 +63,10 @@ final class MoonShineLayout extends AppLayout
                     ->icon('chart-bar'),
                 MenuItem::make(MteleplusReportResource::class, 'Mteleplus Reports')
                     ->icon('chart-bar'),
+                MenuItem::make(TrxPbiLimitReportResource::class, 'TrxPBI Limit')
+                    ->icon('banknotes'),
+                MenuItem::make(TrxPbiSettlementReportResource::class, 'TrxPBI Settlement')
+                    ->icon('banknotes'),
             ])->icon('circle-stack'),
         ];
     }

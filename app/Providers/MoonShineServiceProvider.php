@@ -13,6 +13,10 @@ use App\MoonShine\Resources\MoonShineUser\MoonShineUserResource;
 use App\MoonShine\Resources\MoonShineUserRole\MoonShineUserRoleResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
 use App\MoonShine\Resources\MteleplusReport\Pages\MteleplusReportFetchPage;
+use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
+use App\MoonShine\Resources\TrxPbiLimitReport\Pages\TrxPbiLimitReportFetchPage;
+use App\MoonShine\Resources\TrxPbiSettlementReport\TrxPbiSettlementReportResource;
+use App\MoonShine\Resources\TrxPbiSettlementReport\Pages\TrxPbiSettlementReportFetchPage;
 use Illuminate\Support\ServiceProvider;
 use MoonShine\Contracts\Core\DependencyInjection\CoreContract;
 use MoonShine\Laravel\DependencyInjection\MoonShineConfigurator;
@@ -43,12 +47,16 @@ class MoonShineServiceProvider extends ServiceProvider
                 MasterMetrikResource::class,
                 EngineNotifReportResource::class,
                 MteleplusReportResource::class,
+                TrxPbiLimitReportResource::class,
+                TrxPbiSettlementReportResource::class,
                 AppMetricResource::class,
             ])
             ->pages([
                 ...$core->getConfig()->getPages(),
                 EngineNotifReportFetchPage::class,
                 MteleplusReportFetchPage::class,
+                TrxPbiLimitReportFetchPage::class,
+                TrxPbiSettlementReportFetchPage::class,
             ]);
 
         $core->getConfig()->authorizationRules(

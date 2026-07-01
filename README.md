@@ -127,6 +127,7 @@ monitoring-laravel/
 │       ├── 2026_07_01_000002_recreate_trx_pbi_limit_reports_hourly.php   # per-jam + unique(report_hour, ccy2)
 │       └── 2026_07_01_000003_create_trx_pbi_settlement_reports_table.php
 └── routes/
+    ├── web.php                                  # Redirect / → /admin
     └── console.php                              # Definisi scheduler
 ```
 
@@ -192,6 +193,18 @@ php artisan serve
 ```
 
 Akses admin panel di: `http://127.0.0.1:8000/admin`
+
+> Root URL `/` otomatis redirect ke `/admin`, sehingga akses via IP langsung (mis. `https://192.168.1.50`) diarahkan ke halaman login panel.
+
+### Akses via LAN (HTTPS)
+
+Untuk mengakses dari perangkat lain dalam satu jaringan menggunakan Laragon:
+
+1. **Enable SSL** — Laragon tray → Menu → Apache → SSL → Enable SSL
+2. **Edit VHost** — tambah `<Directory>` block dan IP LAN sebagai `ServerAlias` di `C:\laragon\etc\apache2\sites-enabled\auto.monitoring-laravel.test.conf`
+3. **Buka Firewall** — izinkan port 443 inbound di Windows Defender Firewall
+4. **Update `.env`** — set `APP_URL=https://[domain-atau-IP]`
+5. **Akses dari perangkat lain** — `https://[IP-host]/admin`, klik **Advanced → Proceed** untuk melewati peringatan self-signed certificate
 
 ---
 

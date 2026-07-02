@@ -170,8 +170,19 @@ class MteleplusReportIndexPage extends IndexPage
     {
         [, , $period, $data] = $this->getFilteredData();
 
+        $alerts = [$this->lastUpdateAlert()];
+
+        if (now()->day === 1) {
+            $alerts[] = Alert::make(type: 'warning')
+                ->content(
+                    'Hari ini awal bulan — data bulan ini belum tersedia. '
+                    . 'Data kemarin (<strong>' . now()->subDay()->format('d M Y') . '</strong>) '
+                    . 'tersimpan di bulan sebelumnya. Gunakan filter tanggal untuk melihat data bulan lalu.'
+                );
+        }
+
         return [
-            $this->lastUpdateAlert(),
+            ...$alerts,
             ...parent::mainLayer(),
 
             Fragment::make([
@@ -264,22 +275,22 @@ class MteleplusReportIndexPage extends IndexPage
 
             // ValueMetrics
             Column::make([
-                ValueMetric::make("Total Success ({$period})")
+                ValueMetric::make('Total Success')
                     ->value(number_format($totalSuccess)),
             ])->columnSpan(3),
 
             Column::make([
-                ValueMetric::make("Total Fail ({$period})")
+                ValueMetric::make('Total Fail')
                     ->value(number_format($totalFail)),
             ])->columnSpan(3),
 
             Column::make([
-                ValueMetric::make("Total Incoming ({$period})")
+                ValueMetric::make('Total Incoming')
                     ->value(number_format($totalIncoming)),
             ])->columnSpan(3),
 
             Column::make([
-                ValueMetric::make("Total Outgoing ({$period})")
+                ValueMetric::make('Total Outgoing')
                     ->value(number_format($totalOutgoing)),
             ])->columnSpan(3),
 

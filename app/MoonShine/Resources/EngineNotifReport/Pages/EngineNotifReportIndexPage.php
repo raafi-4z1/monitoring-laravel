@@ -177,17 +177,26 @@ class EngineNotifReportIndexPage extends IndexPage
     {
         [, , $period, $data] = $this->getFilteredData();
 
+        $alerts = [$this->lastUpdateAlert()];
+
+        if (now()->day === 1) {
+            $alerts[] = Alert::make(type: 'warning')
+                ->content(
+                    'Hari ini awal bulan — data bulan ini belum tersedia. '
+                    . 'Data kemarin (<strong>' . now()->subDay()->format('d M Y') . '</strong>) '
+                    . 'tersimpan di bulan sebelumnya. Gunakan filter tanggal untuk melihat data bulan lalu.'
+                );
+        }
+
         return [
-            $this->lastUpdateAlert(),
+            ...$alerts,
             ...parent::mainLayer(),
 
-            // ✅ Fragment dengan withQueryParams() — kunci utama!
             Fragment::make([
                 $this->buildCharts($data, $period),
             ])
             ->name('engine-notif-charts')
             ->withQueryParams(),
-
         ];
     }
 
@@ -214,16 +223,10 @@ class EngineNotifReportIndexPage extends IndexPage
     }
     
     /**
-     * Ambil filter dari request dan query data dari DB.
-     * Mendukung dua sumber: _data (Fragment reload) dan filter (page load).
-     * Default: dari = awal bulan ini, sampai = hari ini.
-     *
      * @return array{0: string, 1: string, 2: string, 3: \Illuminate\Support\Collection}
      */
     private function getFilteredData(): array
     {
-        // ✅ Coba dari _data (Fragment reload via withQueryParams)
-        // ✅ Fallback ke filter (page load biasa)
         $from = request()->input('_data.filter.report_date.from')
             ?? request()->input('filter.report_date.from')
             ?? now()->startOfMonth()->format('Y-m-d');
@@ -295,17 +298,17 @@ class EngineNotifReportIndexPage extends IndexPage
 
             // ✅ ValueMetric
             Column::make([
-                ValueMetric::make("Total Transaksi ({$period})")
+                ValueMetric::make('Total Transaksi')
                     ->value(number_format($totalSuccess + $totalFail)),
             ])->columnSpan(4),
 
             Column::make([
-                ValueMetric::make("Total Berhasil ({$period})")
+                ValueMetric::make('Total Berhasil')
                     ->value(number_format($totalSuccess)),
             ])->columnSpan(4),
 
             Column::make([
-                ValueMetric::make("Total Gagal ({$period})")
+                ValueMetric::make('Total Gagal')
                     ->value(number_format($totalFail)),
             ])->columnSpan(4),
 

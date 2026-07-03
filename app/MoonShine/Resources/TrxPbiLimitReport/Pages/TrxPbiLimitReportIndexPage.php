@@ -174,19 +174,20 @@ class TrxPbiLimitReportIndexPage extends IndexPage
 
     private function getFilteredData(): array
     {
-        $from = request()->input('_data.filter.report_hour.from')
-             ?? request()->input('filter.report_hour.from')
-             ?? Carbon::yesterday()->format('Y-m-d');
-
-        $to = request()->input('_data.filter.report_hour.to')
-           ?? request()->input('filter.report_hour.to')
-           ?? Carbon::yesterday()->format('Y-m-d');
+        $fromInput = request()->input('_data.filter.report_hour.from')
+                 ?? request()->input('filter.report_hour.from');
+        $toInput   = request()->input('_data.filter.report_hour.to')
+                 ?? request()->input('filter.report_hour.to');
 
         $ccy2Filter = request()->input('_data.filter.ccy2')
                    ?? request()->input('filter.ccy2');
 
-        $dateFrom = !empty($from) ? substr($from, 0, 10) : Carbon::yesterday()->format('Y-m-d');
-        $dateTo   = !empty($to)   ? substr($to, 0, 10)   : Carbon::yesterday()->format('Y-m-d');
+        $isDefault = empty($fromInput) && empty($toInput);
+
+        $dateFrom = !empty($fromInput) ? substr($fromInput, 0, 10) : Carbon::yesterday()->format('Y-m-d');
+        $dateTo   = !empty($toInput)
+            ? substr($toInput, 0, 10)
+            : ($isDefault ? Carbon::yesterday()->format('Y-m-d') : Carbon::now()->format('Y-m-d'));
 
         $period = Carbon::parse($dateFrom)->format('d M Y')
                 . ' - '
@@ -230,12 +231,18 @@ class TrxPbiLimitReportIndexPage extends IndexPage
             ->map(fn($h) => $h->format('Y-m-d H:i:s'))
             ->unique()->sort()->values()->toArray();
 
+        $isSingleDay = $data->pluck('report_hour')
+            ->map(fn($h) => $h->format('Y-m-d'))->unique()->count() === 1;
+        $label = $isSingleDay
+            ? fn(string $h) => Carbon::parse($h)->format('H:i')
+            : fn(string $h) => Carbon::parse($h)->format('d/m H:i');
+
         // LineChart: Total Transaksi per jam per CCY2
         $trxChart = LineChartMetric::make('Total Transaksi per Jam per CCY2');
         foreach ($byCcy2 as $ccy2 => $rows) {
             $byHour     = $rows->keyBy(fn($r) => $r->report_hour->format('Y-m-d H:i:s'));
             $seriesData = collect($allHours)->mapWithKeys(
-                fn($h) => [$h => (int) ($byHour[$h]->total_trx ?? 0)]
+                fn($h) => [$label($h) => (int) ($byHour[$h]->total_trx ?? 0)]
             )->toArray();
             $trxChart->series(SeriesItem::make($ccy2, $seriesData)->line());
         }
@@ -245,7 +252,7 @@ class TrxPbiLimitReportIndexPage extends IndexPage
         foreach ($byCcy2 as $ccy2 => $rows) {
             $byHour     = $rows->keyBy(fn($r) => $r->report_hour->format('Y-m-d H:i:s'));
             $seriesData = collect($allHours)->mapWithKeys(
-                fn($h) => [$h => round((float) ($byHour[$h]->total_nominal_eq_usd ?? 0), 2)]
+                fn($h) => [$label($h) => round((float) ($byHour[$h]->total_nominal_eq_usd ?? 0), 2)]
             )->toArray();
             $usdChart->series(SeriesItem::make($ccy2, $seriesData)->line());
         }

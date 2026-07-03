@@ -103,7 +103,7 @@ class TrxPbiLimitReportFetchPage extends FormPage
                                 ->required()
                                 ->placeholder('Tanggal akhir'),
 
-                            ActionButton::make('Fetch & Simpan ke DB')
+                            ActionButton::make()
                                 ->icon('arrow-down-tray')
                                 ->warning()
                                 ->customAttributes([

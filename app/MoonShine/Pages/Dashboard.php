@@ -54,9 +54,13 @@ class Dashboard extends Page
 
     private function engineNotifSection(Carbon $date): Grid
     {
-        $row = EngineNotifReport::whereDate('report_date', $date)->first();
+        $dateStr = $date->format('Y-m-d');
+        $rows    = EngineNotifReport::whereBetween('report_hour', [
+            $dateStr . ' 00:00:00',
+            $dateStr . ' 23:59:59',
+        ])->get();
 
-        if (!$row) {
+        if ($rows->isEmpty()) {
             return Grid::make([
                 Column::make([
                     Alert::make(type: 'warning')->content('Belum ada data Engine Notif untuk kemarin.'),
@@ -64,35 +68,45 @@ class Dashboard extends Page
             ]);
         }
 
+        $totalSuccess = $rows->sum('mvrk_success') + $rows->sum('sms_success') + $rows->sum('email_success');
+        $totalFail    = $rows->sum('mvrk_fail')    + $rows->sum('sms_fail')    + $rows->sum('email_fail');
+        $mvrkTotal    = $rows->sum('mvrk_success')  + $rows->sum('mvrk_fail');
+        $smsTotal     = $rows->sum('sms_success')   + $rows->sum('sms_fail');
+        $emailTotal   = $rows->sum('email_success') + $rows->sum('email_fail');
+
         return Grid::make([
             Column::make([
                 ValueMetric::make('Total Success')
-                    ->value(number_format($row->total_success)),
+                    ->value(number_format($totalSuccess)),
             ])->columnSpan(3),
             Column::make([
                 ValueMetric::make('Total Fail')
-                    ->value(number_format($row->total_fail)),
+                    ->value(number_format($totalFail)),
             ])->columnSpan(3),
             Column::make([
                 ValueMetric::make('MVRK Total')
-                    ->value(number_format($row->mvrk_total)),
+                    ->value(number_format($mvrkTotal)),
             ])->columnSpan(2),
             Column::make([
                 ValueMetric::make('SMS Total')
-                    ->value(number_format($row->sms_total)),
+                    ->value(number_format($smsTotal)),
             ])->columnSpan(2),
             Column::make([
                 ValueMetric::make('Email Total')
-                    ->value(number_format($row->email_total)),
+                    ->value(number_format($emailTotal)),
             ])->columnSpan(2),
         ]);
     }
 
     private function mteleplusSection(Carbon $date): Grid
     {
-        $row = MteleplusReport::whereDate('report_date', $date)->first();
+        $dateStr = $date->format('Y-m-d');
+        $rows    = MteleplusReport::whereBetween('report_hour', [
+            $dateStr . ' 00:00:00',
+            $dateStr . ' 23:59:59',
+        ])->get();
 
-        if (!$row) {
+        if ($rows->isEmpty()) {
             return Grid::make([
                 Column::make([
                     Alert::make(type: 'warning')->content('Belum ada data Mteleplus untuk kemarin.'),
@@ -100,30 +114,37 @@ class Dashboard extends Page
             ]);
         }
 
+        $totalSuccess  = $rows->sum('akt_success')  + $rows->sum('rpin_success');
+        $totalFail     = $rows->sum('akt_fail')     + $rows->sum('rpin_fail');
+        $aktTotal      = $rows->sum('akt_success')  + $rows->sum('akt_fail');
+        $rpinTotal     = $rows->sum('rpin_success') + $rows->sum('rpin_fail');
+        $totalIncoming = $rows->sum('total_incoming');
+        $totalOutgoing = $rows->sum('total_outgoing');
+
         return Grid::make([
             Column::make([
                 ValueMetric::make('Total Success')
-                    ->value(number_format($row->total_success)),
+                    ->value(number_format($totalSuccess)),
             ])->columnSpan(3),
             Column::make([
                 ValueMetric::make('Total Fail')
-                    ->value(number_format($row->total_fail)),
+                    ->value(number_format($totalFail)),
             ])->columnSpan(3),
             Column::make([
                 ValueMetric::make('AKT Total')
-                    ->value(number_format($row->akt_total)),
+                    ->value(number_format($aktTotal)),
             ])->columnSpan(3),
             Column::make([
                 ValueMetric::make('RPIN Total')
-                    ->value(number_format($row->rpin_total)),
+                    ->value(number_format($rpinTotal)),
             ])->columnSpan(3),
             Column::make([
                 ValueMetric::make('Incoming')
-                    ->value(number_format($row->total_incoming)),
+                    ->value(number_format($totalIncoming)),
             ])->columnSpan(6),
             Column::make([
                 ValueMetric::make('Outgoing')
-                    ->value(number_format($row->total_outgoing)),
+                    ->value(number_format($totalOutgoing)),
             ])->columnSpan(6),
         ]);
     }

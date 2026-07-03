@@ -26,7 +26,7 @@ class ElasticsearchService
         return $response->json() ?? [];
     }
 
-    // ✅ Query By Sending Type dari enginenotif-ttrx-* per hari
+    // ✅ Query By Sending Type dari enginenotif-ttrx-* per jam (WIB +07:00)
     public function queryBySendingType(int $sendingType, string $dateFrom, string $dateTo): array
     {
         return $this->search('enginenotif-ttrx-*', [
@@ -38,9 +38,9 @@ class ElasticsearchService
                         [
                             'range' => [
                                 'trxtime' => [
-                                    'gte' => $dateFrom,
-                                    'lte' => $dateTo,
-                                    'format' => 'yyyy-MM-dd',
+                                    'gte'       => $dateFrom . 'T00:00:00.000',
+                                    'lte'       => $dateTo . 'T23:59:59.999',
+                                    'time_zone' => '+07:00',
                                 ]
                             ]
                         ]
@@ -54,10 +54,13 @@ class ElasticsearchService
                         'include' => ['0', '1'],
                     ],
                     'aggs' => [
-                        'per_day' => [
+                        'per_hour' => [
                             'date_histogram' => [
-                                'field' => 'trxtime',
-                                'calendar_interval' => '1d',
+                                'field'             => 'trxtime',
+                                'calendar_interval' => '1h',
+                                'format'            => 'yyyy-MM-dd HH:mm',
+                                'time_zone'         => '+07:00',
+                                'min_doc_count'     => 1,
                             ],
                             'aggs' => [
                                 'jumlah' => [
@@ -71,7 +74,7 @@ class ElasticsearchService
         ]);
     }
 
-    // ✅ Query Avg Response_Time dari enginenotif-ttrx-* per hari
+    // ✅ Query Avg Response_Time dari enginenotif-ttrx-* per jam (WIB +07:00)
     public function queryAvgResponseTime(string $dateFrom, string $dateTo): array
     {
         return $this->search('enginenotif-ttrx-*', [
@@ -79,17 +82,20 @@ class ElasticsearchService
             'query' => [
                 'range' => [
                     'trxtime' => [
-                        'gte' => $dateFrom,
-                        'lte' => $dateTo,
-                        'format' => 'yyyy-MM-dd',
+                        'gte'       => $dateFrom . 'T00:00:00.000',
+                        'lte'       => $dateTo . 'T23:59:59.999',
+                        'time_zone' => '+07:00',
                     ]
                 ]
             ],
             'aggs' => [
-                'per_day_avg_rt' => [
+                'per_hour_avg_rt' => [
                     'date_histogram' => [
-                        'field' => 'trxtime',
-                        'calendar_interval' => '1d',
+                        'field'             => 'trxtime',
+                        'calendar_interval' => '1h',
+                        'format'            => 'yyyy-MM-dd HH:mm',
+                        'time_zone'         => '+07:00',
+                        'min_doc_count'     => 1,
                     ],
                     'aggs' => [
                         'avg_responsetime' => [
@@ -112,15 +118,15 @@ class ElasticsearchService
         $fail    = [];
 
         foreach ($buckets as $sb) {
-            $perDay = $sb['per_day']['buckets'] ?? [];
-            foreach ($perDay as $b) {
-                $date   = substr($b['key_as_string'], 0, 10);
+            $perHour = $sb['per_hour']['buckets'] ?? [];
+            foreach ($perHour as $b) {
+                $hour   = $b['key_as_string']; // "2026-07-01 07:00"
                 $jumlah = $b['jumlah']['value'] ?? $b['doc_count'] ?? 0;
 
                 if ($sb['key'] === '1') {
-                    $success[$date] = $jumlah;
+                    $success[$hour] = ($success[$hour] ?? 0) + $jumlah;
                 } elseif ($sb['key'] === '0') {
-                    $fail[$date] = $jumlah;
+                    $fail[$hour] = ($fail[$hour] ?? 0) + $jumlah;
                 }
             }
         }
@@ -130,19 +136,19 @@ class ElasticsearchService
 
     public function parseAvgRtBuckets(array $result): array
     {
-        $buckets = $result['aggregations']['per_day_avg_rt']['buckets'] ?? [];
+        $buckets = $result['aggregations']['per_hour_avg_rt']['buckets'] ?? [];
         $data    = [];
 
         foreach ($buckets as $b) {
-            $date           = substr($b['key_as_string'], 0, 10);
-            $avgMs          = $b['avg_responsetime']['value'] ?? 0;
-            $data[$date]    = round($avgMs / 1000, 2);
+            $hour        = $b['key_as_string']; // "2026-07-01 07:00"
+            $avgMs       = $b['avg_responsetime']['value'] ?? 0;
+            $data[$hour] = round($avgMs / 1000, 2);
         }
 
         return $data;
     }
 
-    // ✅ Query avg lifespan dari log-enginenotif* per hari
+    // ✅ Query avg lifespan dari log-enginenotif* per jam (WIB +07:00)
     public function queryAvgLifespan(string $dateFrom, string $dateTo): array
     {
         return $this->search('log-enginenotif*', [
@@ -158,9 +164,9 @@ class ElasticsearchService
                         [
                             'range' => [
                                 'date_origin' => [
-                                    'gte'    => $dateFrom,
-                                    'lte'    => $dateTo,
-                                    'format' => 'yyyy-MM-dd',
+                                    'gte'       => $dateFrom . 'T00:00:00.000',
+                                    'lte'       => $dateTo . 'T23:59:59.999',
+                                    'time_zone' => '+07:00',
                                 ]
                             ]
                         ]
@@ -168,10 +174,13 @@ class ElasticsearchService
                 ]
             ],
             'aggs' => [
-                'per_day' => [
+                'per_hour' => [
                     'date_histogram' => [
                         'field'             => 'date_origin',
-                        'calendar_interval' => '1d',
+                        'calendar_interval' => '1h',
+                        'format'            => 'yyyy-MM-dd HH:mm',
+                        'time_zone'         => '+07:00',
+                        'min_doc_count'     => 1,
                     ],
                     'aggs' => [
                         'avg_lifespan' => [
@@ -187,19 +196,19 @@ class ElasticsearchService
 
     public function parseAvgLifespanBuckets(array $result): array
     {
-        $buckets = $result['aggregations']['per_day']['buckets'] ?? [];
+        $buckets = $result['aggregations']['per_hour']['buckets'] ?? [];
         $data    = [];
 
         foreach ($buckets as $b) {
-            $date        = substr($b['key_as_string'], 0, 10);
+            $hour        = $b['key_as_string']; // "2026-07-01 07:00"
             $avgLifespan = $b['avg_lifespan']['value'] ?? 0;
-            $data[$date] = round($avgLifespan, 2);
+            $data[$hour] = round($avgLifespan, 2);
         }
 
         return $data;
     }
 
-    // ✅ Query mTeleplus volume per hari (aggregation)
+    // ✅ Query mTeleplus volume per jam (WIB +07:00)
     public function queryMteleplus(string $dateFrom, string $dateTo): array
     {
         $rules = [
@@ -213,7 +222,6 @@ class ElasticsearchService
             ],
         ];
 
-        // ✅ Build sub-aggs untuk direction dan rule filters
         $subAggs = [
             'by_direction' => [
                 'terms' => [
@@ -237,25 +245,27 @@ class ElasticsearchService
             'query' => [
                 'range' => [
                     'date_origin' => [
-                        'gte'    => $dateFrom,
-                        'lte'    => $dateTo,
-                        'format' => 'yyyy-MM-dd',
+                        'gte'       => $dateFrom . 'T00:00:00.000',
+                        'lte'       => $dateTo . 'T23:59:59.999',
+                        'time_zone' => '+07:00',
                     ],
                 ],
             ],
             'aggs' => [
-                'per_day' => [
+                'per_hour' => [
                     'date_histogram' => [
                         'field'             => 'date_origin',
-                        'calendar_interval' => '1d',
-                        'min_doc_count'     => 0,
+                        'calendar_interval' => '1h',
+                        'format'            => 'yyyy-MM-dd HH:mm',
+                        'time_zone'         => '+07:00',
+                        'min_doc_count'     => 1,
                     ],
                     'aggs' => $subAggs,
                 ],
             ],
         ]);
     }
-    
+
     // ✅ Query TrxPBI Limit dari wic-trx-pbi-ceklimit* per jam, dikelompokkan per CCY2
     public function queryTrxPbiLimit(string $dateFrom, string $dateTo): array
     {
@@ -372,7 +382,6 @@ class ElasticsearchService
         $parsed  = [];
 
         foreach ($buckets as $bucket) {
-            // key_as_string = "2026-07-01 07:00"
             $hour          = $bucket['key_as_string'];
             $parsed[$hour] = [];
 
@@ -391,11 +400,11 @@ class ElasticsearchService
 
     public function parseMteleplus(array $result): array
     {
-        $buckets = $result['aggregations']['per_day']['buckets'] ?? [];
+        $buckets = $result['aggregations']['per_hour']['buckets'] ?? [];
         $parsed  = [];
 
         foreach ($buckets as $bucket) {
-            $date     = substr($bucket['key_as_string'], 0, 10);
+            $hour     = $bucket['key_as_string']; // "2026-07-01 07:00"
             $incoming = 0;
             $outgoing = 0;
 
@@ -404,7 +413,7 @@ class ElasticsearchService
                 if ($dir['key'] === 'outgoing') $outgoing = $dir['doc_count'];
             }
 
-            $parsed[$date] = [
+            $parsed[$hour] = [
                 'akt_success'    => $bucket['akt_success']['doc_count']  ?? 0,
                 'akt_fail'       => $bucket['akt_fail']['doc_count']      ?? 0,
                 'rpin_success'   => $bucket['rpin_success']['doc_count']  ?? 0,

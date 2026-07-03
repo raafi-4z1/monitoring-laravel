@@ -27,10 +27,10 @@ class MteleplusReportResource extends ModelResource implements HasImportExportCo
     use ImportExportConcern;
 
     protected string $model = MteleplusReport::class;
-    protected string $column = 'report_date';
+    protected string $column = 'report_hour';
     protected string $title = 'Mteleplus Reports';
 
-    protected string $sortColumn = 'report_date';
+    protected string $sortColumn = 'report_hour';
     protected int $itemsPerPage = 10;
     protected bool $usePagination = true;
 
@@ -78,7 +78,7 @@ class MteleplusReportResource extends ModelResource implements HasImportExportCo
     protected function exportFields(): iterable
     {
         return [
-            Date::make('Tanggal', 'report_date'),
+            Date::make('Jam', 'report_hour')->withTime()->format('Y-m-d H:i'),
             Number::make('AKT Success',    'akt_success'),
             Number::make('AKT Fail',       'akt_fail'),
             Preview::make('AKT Total',     'akt_total'),

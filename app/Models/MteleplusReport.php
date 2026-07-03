@@ -9,17 +9,16 @@ use Illuminate\Database\Eloquent\Model;
 class MteleplusReport extends Model
 {
     protected $fillable = [
-        'report_date',
+        'report_hour',
         'akt_success', 'akt_fail',
         'rpin_success', 'rpin_fail',
         'total_incoming', 'total_outgoing',
     ];
 
     protected $casts = [
-        'report_date' => 'date',
+        'report_hour' => 'datetime',
     ];
 
-    // ✅ Accessor
     public function getAktTotalAttribute(): int
     {
         return $this->akt_success + $this->akt_fail;

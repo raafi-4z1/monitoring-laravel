@@ -20,27 +20,29 @@ class MteleplusReportService
             $result = $this->es->queryMteleplus($dateStr, $dateStr);
             $parsed = $this->es->parseMteleplus($result);
 
-            // ✅ Sama seperti EngineNotif — ambil data untuk tanggal spesifik
-            $data = $parsed[$dateStr] ?? null;
-
-            if (!$data) {
+            if (empty($parsed)) {
                 Log::warning("MteleplusReport: tidak ada data untuk {$dateStr}");
                 return false;
             }
 
-            MteleplusReport::updateOrCreate(
-                ['report_date' => $dateStr],
-                [
-                    'akt_success'    => $data['akt_success'],
-                    'akt_fail'       => $data['akt_fail'],
-                    'rpin_success'   => $data['rpin_success'],
-                    'rpin_fail'      => $data['rpin_fail'],
-                    'total_incoming' => $data['total_incoming'],
-                    'total_outgoing' => $data['total_outgoing'],
-                ]
-            );
+            foreach ($parsed as $hourKey => $data) {
+                // hourKey = "2026-07-01 07:00" → simpan sebagai datetime
+                $reportHour = Carbon::createFromFormat('Y-m-d H:i', $hourKey)->format('Y-m-d H:i:s');
 
-            Log::info("MteleplusReport: berhasil simpan data {$dateStr}");
+                MteleplusReport::updateOrCreate(
+                    ['report_hour' => $reportHour],
+                    [
+                        'akt_success'    => $data['akt_success'],
+                        'akt_fail'       => $data['akt_fail'],
+                        'rpin_success'   => $data['rpin_success'],
+                        'rpin_fail'      => $data['rpin_fail'],
+                        'total_incoming' => $data['total_incoming'],
+                        'total_outgoing' => $data['total_outgoing'],
+                    ]
+                );
+            }
+
+            Log::info("MteleplusReport: berhasil simpan " . count($parsed) . " jam untuk {$dateStr}");
             return true;
 
         } catch (\Throwable $e) {

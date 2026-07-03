@@ -6,6 +6,7 @@ namespace App\MoonShine\Resources\EngineNotifReport\Pages;
 
 use App\Models\EngineNotifReport;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use MoonShine\Apexcharts\Components\DonutChartMetric;
 use MoonShine\Apexcharts\Components\LineChartMetric;
@@ -57,9 +58,10 @@ class EngineNotifReportIndexPage extends IndexPage
     protected function fields(): iterable
     {
         return [
-            Date::make('Tanggal', 'report_date')
-                ->sortable()
-                ->format('Y-m-d'),
+            Date::make('Jam', 'report_hour')
+                ->withTime()
+                ->format('Y-m-d H:i')
+                ->sortable(),
 
             Number::make('MVRK Success', 'mvrk_success')->sortable(),
             Number::make('MVRK Fail',    'mvrk_fail')->sortable(),
@@ -76,12 +78,12 @@ class EngineNotifReportIndexPage extends IndexPage
             Number::make('Total Success','total_success')->sortable(),
             Number::make('Total Fail',   'total_fail')->sortable(),
 
-            Preview::make('Avg RT (s)',       'avg_response_time')
+            Preview::make('Avg RT (s)',        'avg_response_time')
                 ->changeFill(fn($item) => number_format((float) $item->avg_response_time, 2) . 's')
                 ->sortable(),
 
             Preview::make('Avg Lifespan (ms)', 'avg_lifespan')
-                ->changeFill(fn($item) => number_format((float) $item->avg_lifespan, 2) . 's')
+                ->changeFill(fn($item) => number_format((float) $item->avg_lifespan, 2) . 'ms')
                 ->sortable(),
         ];
     }
@@ -102,7 +104,7 @@ class EngineNotifReportIndexPage extends IndexPage
     protected function filters(): iterable
     {
         return [
-            DateRange::make('Tanggal', 'report_date'),
+            DateRange::make('Tanggal', 'report_hour'),
         ];
     }
 
@@ -114,18 +116,12 @@ class EngineNotifReportIndexPage extends IndexPage
         return [];
     }
 
-    /**
-     * @param TableBuilder $component
-     * @return TableBuilder
-     */
     protected function modifyListComponent(ComponentContract $component): ComponentContract
     {
         return $component
             ->columnSelection()
             ->sticky()
             ->stickyButtons()
-            // ✅ Saat filter submit → table reload → dispatch FRAGMENT_UPDATED
-            // Fragment akan reload dengan withQueryParams() membawa filter dari URL
             ->async(events: [
                 AlpineJs::event(JsEvent::FRAGMENT_UPDATED, 'engine-notif-charts'),
             ])
@@ -175,18 +171,9 @@ class EngineNotifReportIndexPage extends IndexPage
      */
     protected function mainLayer(): array
     {
-        [, , $period, $data] = $this->getFilteredData();
+        [$dateFrom, $dateTo, $period, $data, $isDefault] = $this->getFilteredData();
 
         $alerts = [$this->lastUpdateAlert()];
-
-        if (now()->day === 1) {
-            $alerts[] = Alert::make(type: 'warning')
-                ->content(
-                    'Hari ini awal bulan — data bulan ini belum tersedia. '
-                    . 'Data kemarin (<strong>' . now()->subDay()->format('d M Y') . '</strong>) '
-                    . 'tersimpan di bulan sebelumnya. Gunakan filter tanggal untuk melihat data bulan lalu.'
-                );
-        }
 
         return [
             ...$alerts,
@@ -213,46 +200,44 @@ class EngineNotifReportIndexPage extends IndexPage
 
     protected function lastUpdateAlert(): Alert
     {
-        $latest = EngineNotifReport::latest('report_date')->first();
+        $latest = EngineNotifReport::latest('report_hour')->first();
 
         return $latest
             ? Alert::make(type: 'info')
-                ->content("Data terakhir: <strong>{$latest->report_date->format('d M Y')}</strong> — diupdate: {$latest->updated_at->format('d M Y H:i')}")
+                ->content("Data terakhir: <strong>{$latest->report_hour->format('d M Y H:i')}</strong> — diupdate: {$latest->updated_at->format('d M Y H:i')}")
             : Alert::make(type: 'warning')
                 ->content('Belum ada data. Gunakan Fetch Manual.');
     }
-    
+
     /**
-     * @return array{0: string, 1: string, 2: string, 3: \Illuminate\Support\Collection}
+     * @return array{0: string, 1: string, 2: string, 3: \Illuminate\Support\Collection, 4: bool}
      */
     private function getFilteredData(): array
     {
-        $from = request()->input('_data.filter.report_date.from')
-            ?? request()->input('filter.report_date.from')
-            ?? now()->startOfMonth()->format('Y-m-d');
+        $fromInput = request()->input('_data.filter.report_hour.from')
+            ?? request()->input('filter.report_hour.from');
+        $toInput   = request()->input('_data.filter.report_hour.to')
+            ?? request()->input('filter.report_hour.to');
 
-        $to   = request()->input('_data.filter.report_date.to')
-            ?? request()->input('filter.report_date.to')
-            ?? now()->format('Y-m-d');
+        $isDefault = empty($fromInput) && empty($toInput);
 
-        $dateFrom = !empty($from) ? $from : now()->startOfMonth()->format('Y-m-d');
-        $dateTo   = !empty($to)   ? $to   : now()->format('Y-m-d');
+        $dateFrom = !empty($fromInput) ? $fromInput : Carbon::yesterday()->format('Y-m-d');
+        $dateTo   = !empty($toInput)
+            ? $toInput
+            : ($isDefault ? Carbon::yesterday()->format('Y-m-d') : Carbon::now()->format('Y-m-d'));
 
-        $period = \Carbon\Carbon::parse($dateFrom)->format('d M Y')
+        $period = Carbon::parse($dateFrom)->format('d M Y')
                 . ' - '
-                . \Carbon\Carbon::parse($dateTo)->format('d M Y');
+                . Carbon::parse($dateTo)->format('d M Y');
 
         $data = EngineNotifReport::query()
-            ->whereBetween('report_date', [$dateFrom, $dateTo])
-            ->orderBy('report_date')
+            ->whereBetween('report_hour', [$dateFrom . ' 00:00:00', $dateTo . ' 23:59:59'])
+            ->orderBy('report_hour')
             ->get();
 
-        return [$dateFrom, $dateTo, $period, $data];
+        return [$dateFrom, $dateTo, $period, $data, $isDefault];
     }
 
-    /**
-     * Render semua chart berdasarkan data yang sudah difilter.
-     */
     private function buildCharts(Collection $data, string $period): Grid
     {
         if ($data->isEmpty()) {
@@ -271,32 +256,43 @@ class EngineNotifReportIndexPage extends IndexPage
         $totalSms     = $data->sum('sms_success')   + $data->sum('sms_fail');
         $totalEmail   = $data->sum('email_success')  + $data->sum('email_fail');
 
-        $successByDate = $data->mapWithKeys(fn($row) => [
-            $row->report_date->format('Y-m-d') => (int) $row->total_success,
-        ])->toArray();
+        // Zero-fill: kumpulkan semua jam yang ada, isi jam kosong dengan 0
+        $allHours = $data->pluck('report_hour')
+            ->map(fn($h) => $h->format('Y-m-d H:i:s'))
+            ->unique()->sort()->values()->toArray();
 
-        $failByDate = $data->mapWithKeys(fn($row) => [
-            $row->report_date->format('Y-m-d') => (int) $row->total_fail,
-        ])->toArray();
+        $isSingleDay = $data->pluck('report_hour')
+            ->map(fn($h) => $h->format('Y-m-d'))->unique()->count() === 1;
+        $label = $isSingleDay
+            ? fn(string $h) => Carbon::parse($h)->format('H:i')
+            : fn(string $h) => Carbon::parse($h)->format('d/m H:i');
 
-        $avgRtByDate = $data->mapWithKeys(fn($row) => [
-            $row->report_date->format('Y-m-d') => (float) $row->avg_response_time,
-        ])->toArray();
+        $byHour = $data->keyBy(fn($r) => $r->report_hour->format('Y-m-d H:i:s'));
 
-        $avgLsByDate = $data->mapWithKeys(fn($row) => [
-            $row->report_date->format('Y-m-d') => (float) $row->avg_lifespan,
-        ])->toArray();
+        $successByHour = collect($allHours)->mapWithKeys(
+            fn($h) => [$label($h) => (int) ($byHour[$h]->total_success ?? 0)]
+        )->toArray();
+
+        $failByHour = collect($allHours)->mapWithKeys(
+            fn($h) => [$label($h) => (int) ($byHour[$h]->total_fail ?? 0)]
+        )->toArray();
+
+        $avgRtByHour = collect($allHours)->mapWithKeys(
+            fn($h) => [$label($h) => (float) ($byHour[$h]->avg_response_time ?? 0)]
+        )->toArray();
+
+        $avgLsByHour = collect($allHours)->mapWithKeys(
+            fn($h) => [$label($h) => (float) ($byHour[$h]->avg_lifespan ?? 0)]
+        )->toArray();
 
         return Grid::make([
             Column::make([Divider::make()])->columnSpan(12),
 
-            // ✅ Info periode
             Column::make([
                 Alert::make(type: 'info')
                     ->content("Data periode: <strong>{$period}</strong>"),
             ])->columnSpan(12),
 
-            // ✅ ValueMetric
             Column::make([
                 ValueMetric::make('Total Transaksi')
                     ->value(number_format($totalSuccess + $totalFail)),
@@ -312,26 +308,22 @@ class EngineNotifReportIndexPage extends IndexPage
                     ->value(number_format($totalFail)),
             ])->columnSpan(4),
 
-            // ✅ Line Chart: Success vs Fail
             Column::make([
-                LineChartMetric::make('Success vs Fail per Hari')
-                    ->series(SeriesItem::make('Total Success', $successByDate)->line())
-                    ->series(SeriesItem::make('Total Fail', $failByDate)->line()),
+                LineChartMetric::make('Success vs Fail per Jam')
+                    ->series(SeriesItem::make('Total Success', $successByHour)->line())
+                    ->series(SeriesItem::make('Total Fail', $failByHour)->line()),
             ])->columnSpan(12),
 
-            // ✅ Line Chart: Avg Response Time
             Column::make([
-                LineChartMetric::make('Avg Response Time (s)')
-                    ->series(SeriesItem::make('Avg RT', $avgRtByDate)->line()),
+                LineChartMetric::make('Avg Response Time (s) per Jam')
+                    ->series(SeriesItem::make('Avg RT', $avgRtByHour)->line()),
             ])->columnSpan(6),
 
-            // ✅ Line Chart: Avg Lifespan
             Column::make([
-                LineChartMetric::make('Avg Lifespan (ms)')
-                    ->series(SeriesItem::make('Avg Lifespan', $avgLsByDate)->line()),
+                LineChartMetric::make('Avg Lifespan (ms) per Jam')
+                    ->series(SeriesItem::make('Avg Lifespan', $avgLsByHour)->line()),
             ])->columnSpan(6),
 
-            // ✅ Donut Chart: per Channel
             Column::make([
                 DonutChartMetric::make('Distribusi per Channel')
                     ->values([

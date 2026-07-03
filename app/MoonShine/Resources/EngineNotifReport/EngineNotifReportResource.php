@@ -27,10 +27,10 @@ class EngineNotifReportResource extends ModelResource implements HasImportExport
     use ImportExportConcern;
 
     protected string $model = EngineNotifReport::class;
-    protected string $column = 'report_date';
+    protected string $column = 'report_hour';
     protected string $title = 'Engine Notif Reports';
 
-    protected string $sortColumn = 'report_date';
+    protected string $sortColumn = 'report_hour';
     protected int $itemsPerPage = 10;
     protected bool $usePagination = true;
 
@@ -83,7 +83,7 @@ class EngineNotifReportResource extends ModelResource implements HasImportExport
     protected function exportFields(): iterable
     {
         return [
-            Date::make('Tanggal', 'report_date')->format('Y-m-d'),
+            Date::make('Jam', 'report_hour')->withTime()->format('Y-m-d H:i'),
             Number::make('MVRK Success',  'mvrk_success'),
             Number::make('MVRK Fail',     'mvrk_fail'),
             Number::make('MVRK Total',    'mvrk_total'),
@@ -98,7 +98,7 @@ class EngineNotifReportResource extends ModelResource implements HasImportExport
             Preview::make('Avg RT (s)',   'avg_response_time')
                 ->changeFill(fn($item) => number_format((float) $item->avg_response_time, 2) . 's'),
             Preview::make('Avg Lifespan (ms)', 'avg_lifespan')
-                ->changeFill(fn($item) => number_format((float) $item->avg_lifespan, 2) . 's'),
+                ->changeFill(fn($item) => number_format((float) $item->avg_lifespan, 2) . 'ms'),
         ];
     }
 

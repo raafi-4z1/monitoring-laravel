@@ -10,7 +10,7 @@ class EngineNotifReport extends Model
     protected $table = 'engine_notif_reports';
 
     protected $fillable = [
-        'report_date',
+        'report_hour',
         'mvrk_success',
         'mvrk_fail',
         'sms_success',
@@ -22,10 +22,9 @@ class EngineNotifReport extends Model
     ];
 
     protected $casts = [
-        'report_date' => 'date',
+        'report_hour' => 'datetime',
     ];
 
-    // ✅ Accessor - dihitung otomatis saat akses $model->mvrk_total
     protected function mvrkTotal(): Attribute
     {
         return Attribute::make(

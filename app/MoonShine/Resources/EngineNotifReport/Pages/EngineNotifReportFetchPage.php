@@ -68,7 +68,7 @@ class EngineNotifReportFetchPage extends FormPage
             Alert::make(type: 'warning')
                 ->content('Gunakan form ini untuk mengambil data dari Elasticsearch berdasarkan rentang tanggal tertentu dan menyimpannya ke database. Maksimal 90 hari per fetch.'),
             Alert::make(type: 'info')
-                ->content('⏳ Proses fetch bisa memakan waktu beberapa saat tergantung rentang tanggal. Mohon tunggu hingga muncul notifikasi selesai.'),
+                ->content('⏳ Data diambil dari Elasticsearch per jam (WIB +07:00). Setiap hari dapat menghasilkan hingga 24 baris data. Proses bisa memakan waktu beberapa saat tergantung rentang tanggal.'),
 
             Divider::make(),
 
@@ -103,7 +103,7 @@ class EngineNotifReportFetchPage extends FormPage
                                 ->required()
                                 ->placeholder('Tanggal akhir'),
 
-                            ActionButton::make('Fetch & Simpan ke DB')
+                            ActionButton::make()
                                 ->icon('arrow-down-tray')
                                 ->warning()
                                 ->customAttributes([

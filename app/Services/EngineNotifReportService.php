@@ -12,7 +12,6 @@ class EngineNotifReportService
         protected ElasticsearchService $es
     ) {}
 
-    // ✅ Fetch data dari ES untuk tanggal tertentu dan simpan ke DB
     public function fetchAndStore(Carbon $date): bool
     {
         $dateStr = $date->format('Y-m-d');
@@ -27,39 +26,51 @@ class EngineNotifReportService
             [$emailS, $emailF] = $this->es->parseStatusBuckets(
                 $this->es->queryBySendingType(2, $dateStr, $dateStr)
             );
-
-            // ✅ Dari enginenotif-ttrx-*
-            $avgRt = $this->es->parseAvgRtBuckets(
+            $avgRt      = $this->es->parseAvgRtBuckets(
                 $this->es->queryAvgResponseTime($dateStr, $dateStr)
             );
-
-            // ✅ Dari log-enginenotif*
             $avgLifespan = $this->es->parseAvgLifespanBuckets(
                 $this->es->queryAvgLifespan($dateStr, $dateStr)
             );
 
-            $ms = $mvrkS[$dateStr]  ?? 0;
-            $mf = $mvrkF[$dateStr]  ?? 0;
-            $ss = $smsS[$dateStr]   ?? 0;
-            $sf = $smsF[$dateStr]   ?? 0;
-            $es = $emailS[$dateStr] ?? 0;
-            $ef = $emailF[$dateStr] ?? 0;
+            // Kumpulkan semua jam yang muncul di salah satu hasil query
+            $allHours = collect(array_keys($mvrkS))
+                ->merge(array_keys($mvrkF))
+                ->merge(array_keys($smsS))
+                ->merge(array_keys($smsF))
+                ->merge(array_keys($emailS))
+                ->merge(array_keys($emailF))
+                ->merge(array_keys($avgRt))
+                ->merge(array_keys($avgLifespan))
+                ->unique()
+                ->sort()
+                ->values();
 
-            EngineNotifReport::updateOrCreate(
-                ['report_date' => $dateStr],
-                [
-                    'mvrk_success'      => $ms,
-                    'mvrk_fail'         => $mf,
-                    'sms_success'       => $ss,
-                    'sms_fail'          => $sf,
-                    'email_success'     => $es,
-                    'email_fail'        => $ef,
-                    'avg_response_time' => round($avgRt[$dateStr]       ?? 0, 2),
-                    'avg_lifespan'      => round($avgLifespan[$dateStr] ?? 0, 2),
-                ]
-            );
+            if ($allHours->isEmpty()) {
+                Log::warning("EngineNotifReport: tidak ada data untuk {$dateStr}");
+                return false;
+            }
 
-            Log::info("EngineNotifReport: berhasil simpan data {$dateStr}");
+            foreach ($allHours as $hourKey) {
+                // hourKey = "2026-07-01 07:00" → simpan sebagai datetime
+                $reportHour = Carbon::createFromFormat('Y-m-d H:i', $hourKey)->format('Y-m-d H:i:s');
+
+                EngineNotifReport::updateOrCreate(
+                    ['report_hour' => $reportHour],
+                    [
+                        'mvrk_success'      => $mvrkS[$hourKey]      ?? 0,
+                        'mvrk_fail'         => $mvrkF[$hourKey]      ?? 0,
+                        'sms_success'       => $smsS[$hourKey]       ?? 0,
+                        'sms_fail'          => $smsF[$hourKey]       ?? 0,
+                        'email_success'     => $emailS[$hourKey]     ?? 0,
+                        'email_fail'        => $emailF[$hourKey]     ?? 0,
+                        'avg_response_time' => round($avgRt[$hourKey]       ?? 0, 2),
+                        'avg_lifespan'      => round($avgLifespan[$hourKey] ?? 0, 2),
+                    ]
+                );
+            }
+
+            Log::info("EngineNotifReport: berhasil simpan {$allHours->count()} jam untuk {$dateStr}");
             return true;
 
         } catch (\Throwable $e) {

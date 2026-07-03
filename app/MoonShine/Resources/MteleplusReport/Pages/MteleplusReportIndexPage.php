@@ -6,6 +6,7 @@ namespace App\MoonShine\Resources\MteleplusReport\Pages;
 
 use App\Models\MteleplusReport;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use MoonShine\Apexcharts\Components\DonutChartMetric;
 use MoonShine\Apexcharts\Components\LineChartMetric;
@@ -57,7 +58,10 @@ class MteleplusReportIndexPage extends IndexPage
     protected function fields(): iterable
     {
         return [
-            Date::make('Tanggal', 'report_date')->sortable()->format('Y-m-d'),
+            Date::make('Jam', 'report_hour')
+                ->withTime()
+                ->format('Y-m-d H:i')
+                ->sortable(),
             Number::make('AKT Success',  'akt_success')->sortable(),
             Number::make('AKT Fail',     'akt_fail')->sortable(),
             Preview::make('AKT Total',   'akt_total')
@@ -95,7 +99,7 @@ class MteleplusReportIndexPage extends IndexPage
     protected function filters(): iterable
     {
         return [
-            DateRange::make('Tanggal', 'report_date'),
+            DateRange::make('Tanggal', 'report_hour'),
         ];
     }
 
@@ -107,11 +111,6 @@ class MteleplusReportIndexPage extends IndexPage
         return [];
     }
 
-    /**
-     * @param  TableBuilder  $component
-     *
-     * @return TableBuilder
-     */
     protected function modifyListComponent(ComponentContract $component): ComponentContract
     {
         return $component
@@ -150,7 +149,6 @@ class MteleplusReportIndexPage extends IndexPage
             ]);
     }
 
-
     /**
      * @return list<ComponentContract>
      * @throws Throwable
@@ -168,18 +166,9 @@ class MteleplusReportIndexPage extends IndexPage
      */
     protected function mainLayer(): array
     {
-        [, , $period, $data] = $this->getFilteredData();
+        [$dateFrom, $dateTo, $period, $data, $isDefault] = $this->getFilteredData();
 
         $alerts = [$this->lastUpdateAlert()];
-
-        if (now()->day === 1) {
-            $alerts[] = Alert::make(type: 'warning')
-                ->content(
-                    'Hari ini awal bulan — data bulan ini belum tersedia. '
-                    . 'Data kemarin (<strong>' . now()->subDay()->format('d M Y') . '</strong>) '
-                    . 'tersimpan di bulan sebelumnya. Gunakan filter tanggal untuk melihat data bulan lalu.'
-                );
-        }
 
         return [
             ...$alerts,
@@ -206,38 +195,42 @@ class MteleplusReportIndexPage extends IndexPage
 
     protected function lastUpdateAlert(): Alert
     {
-        $latest = MteleplusReport::latest('report_date')->first();
+        $latest = MteleplusReport::latest('report_hour')->first();
 
         return $latest
             ? Alert::make(type: 'info')
-                ->content("Data terakhir: <strong>{$latest->report_date->format('d M Y')}</strong> — diupdate: {$latest->updated_at->format('d M Y H:i')}")
+                ->content("Data terakhir: <strong>{$latest->report_hour->format('d M Y H:i')}</strong> — diupdate: {$latest->updated_at->format('d M Y H:i')}")
             : Alert::make(type: 'warning')
                 ->content('Belum ada data. Gunakan Fetch Manual.');
     }
 
+    /**
+     * @return array{0: string, 1: string, 2: string, 3: \Illuminate\Support\Collection, 4: bool}
+     */
     private function getFilteredData(): array
     {
-        $from = request()->input('_data.filter.report_date.from')
-             ?? request()->input('filter.report_date.from')
-             ?? now()->startOfMonth()->format('Y-m-d');
+        $fromInput = request()->input('_data.filter.report_hour.from')
+            ?? request()->input('filter.report_hour.from');
+        $toInput   = request()->input('_data.filter.report_hour.to')
+            ?? request()->input('filter.report_hour.to');
 
-        $to   = request()->input('_data.filter.report_date.to')
-             ?? request()->input('filter.report_date.to')
-             ?? now()->format('Y-m-d');
+        $isDefault = empty($fromInput) && empty($toInput);
 
-        $dateFrom = !empty($from) ? $from : now()->startOfMonth()->format('Y-m-d');
-        $dateTo   = !empty($to)   ? $to   : now()->format('Y-m-d');
+        $dateFrom = !empty($fromInput) ? $fromInput : Carbon::yesterday()->format('Y-m-d');
+        $dateTo   = !empty($toInput)
+            ? $toInput
+            : ($isDefault ? Carbon::yesterday()->format('Y-m-d') : Carbon::now()->format('Y-m-d'));
 
-        $period = \Carbon\Carbon::parse($dateFrom)->format('d M Y')
+        $period = Carbon::parse($dateFrom)->format('d M Y')
                 . ' - '
-                . \Carbon\Carbon::parse($dateTo)->format('d M Y');
+                . Carbon::parse($dateTo)->format('d M Y');
 
         $data = MteleplusReport::query()
-            ->whereBetween('report_date', [$dateFrom, $dateTo])
-            ->orderBy('report_date')
+            ->whereBetween('report_hour', [$dateFrom . ' 00:00:00', $dateTo . ' 23:59:59'])
+            ->orderBy('report_hour')
             ->get();
 
-        return [$dateFrom, $dateTo, $period, $data];
+        return [$dateFrom, $dateTo, $period, $data, $isDefault];
     }
 
     private function buildCharts(Collection $data, string $period): Grid
@@ -258,12 +251,25 @@ class MteleplusReportIndexPage extends IndexPage
         $totalAkt      = $data->sum('akt_success') + $data->sum('akt_fail');
         $totalRpin     = $data->sum('rpin_success') + $data->sum('rpin_fail');
 
-        $aktSuccessByDate  = $data->mapWithKeys(fn($r) => [$r->report_date->format('Y-m-d') => (int) $r->akt_success])->toArray();
-        $aktFailByDate     = $data->mapWithKeys(fn($r) => [$r->report_date->format('Y-m-d') => (int) $r->akt_fail])->toArray();
-        $rpinSuccessByDate = $data->mapWithKeys(fn($r) => [$r->report_date->format('Y-m-d') => (int) $r->rpin_success])->toArray();
-        $rpinFailByDate    = $data->mapWithKeys(fn($r) => [$r->report_date->format('Y-m-d') => (int) $r->rpin_fail])->toArray();
-        $incomingByDate    = $data->mapWithKeys(fn($r) => [$r->report_date->format('Y-m-d') => (int) $r->total_incoming])->toArray();
-        $outgoingByDate    = $data->mapWithKeys(fn($r) => [$r->report_date->format('Y-m-d') => (int) $r->total_outgoing])->toArray();
+        // Zero-fill: kumpulkan semua jam yang ada, isi jam kosong dengan 0
+        $allHours = $data->pluck('report_hour')
+            ->map(fn($h) => $h->format('Y-m-d H:i:s'))
+            ->unique()->sort()->values()->toArray();
+
+        $isSingleDay = $data->pluck('report_hour')
+            ->map(fn($h) => $h->format('Y-m-d'))->unique()->count() === 1;
+        $label = $isSingleDay
+            ? fn(string $h) => Carbon::parse($h)->format('H:i')
+            : fn(string $h) => Carbon::parse($h)->format('d/m H:i');
+
+        $byHour = $data->keyBy(fn($r) => $r->report_hour->format('Y-m-d H:i:s'));
+
+        $aktSuccessByHour  = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->akt_success  ?? 0)])->toArray();
+        $aktFailByHour     = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->akt_fail     ?? 0)])->toArray();
+        $rpinSuccessByHour = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->rpin_success ?? 0)])->toArray();
+        $rpinFailByHour    = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->rpin_fail    ?? 0)])->toArray();
+        $incomingByHour    = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->total_incoming ?? 0)])->toArray();
+        $outgoingByHour    = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->total_outgoing ?? 0)])->toArray();
 
         return Grid::make([
             Column::make([Divider::make()])->columnSpan(12),
@@ -273,7 +279,6 @@ class MteleplusReportIndexPage extends IndexPage
                     ->content("Data periode: <strong>{$period}</strong>"),
             ])->columnSpan(12),
 
-            // ValueMetrics
             Column::make([
                 ValueMetric::make('Total Success')
                     ->value(number_format($totalSuccess)),
@@ -294,35 +299,30 @@ class MteleplusReportIndexPage extends IndexPage
                     ->value(number_format($totalOutgoing)),
             ])->columnSpan(3),
 
-            // Line Chart: AKT
             Column::make([
-                LineChartMetric::make('AKT per Hari')
-                    ->series(SeriesItem::make('AKT Success', $aktSuccessByDate)->line())
-                    ->series(SeriesItem::make('AKT Fail',    $aktFailByDate)->line()),
+                LineChartMetric::make('AKT per Jam')
+                    ->series(SeriesItem::make('AKT Success', $aktSuccessByHour)->line())
+                    ->series(SeriesItem::make('AKT Fail',    $aktFailByHour)->line()),
             ])->columnSpan(6),
 
-            // Line Chart: RPIN
             Column::make([
-                LineChartMetric::make('RPIN per Hari')
-                    ->series(SeriesItem::make('RPIN Success', $rpinSuccessByDate)->line())
-                    ->series(SeriesItem::make('RPIN Fail',    $rpinFailByDate)->line()),
+                LineChartMetric::make('RPIN per Jam')
+                    ->series(SeriesItem::make('RPIN Success', $rpinSuccessByHour)->line())
+                    ->series(SeriesItem::make('RPIN Fail',    $rpinFailByHour)->line()),
             ])->columnSpan(6),
 
-            // Line Chart: Incoming vs Outgoing
             Column::make([
-                LineChartMetric::make('Incoming vs Outgoing per Hari')
-                    ->series(SeriesItem::make('Incoming', $incomingByDate)->line())
-                    ->series(SeriesItem::make('Outgoing', $outgoingByDate)->line()),
+                LineChartMetric::make('Incoming vs Outgoing per Jam')
+                    ->series(SeriesItem::make('Incoming', $incomingByHour)->line())
+                    ->series(SeriesItem::make('Outgoing', $outgoingByHour)->line()),
             ])->columnSpan(12),
 
-            // Donut: AKT vs RPIN
             Column::make([
                 DonutChartMetric::make('Distribusi AKT vs RPIN')
                     ->values(['AKT' => $totalAkt, 'RPIN' => $totalRpin])
                     ->decimals(0),
             ])->columnSpan(6),
 
-            // Donut: Incoming vs Outgoing
             Column::make([
                 DonutChartMetric::make('Incoming vs Outgoing')
                     ->values(['Incoming' => $totalIncoming, 'Outgoing' => $totalOutgoing])

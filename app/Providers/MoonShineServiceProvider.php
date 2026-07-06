@@ -9,6 +9,7 @@ use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\EngineNotifReport\Pages\EngineNotifReportFetchPage;
 use App\MoonShine\Resources\MasterAplikasi\MasterAplikasiResource;
 use App\MoonShine\Resources\MasterMetrik\MasterMetrikResource;
+use App\MoonShine\Resources\ReportSource\ReportSourceResource;
 use App\MoonShine\Resources\MoonShineUser\MoonShineUserResource;
 use App\MoonShine\Resources\MoonShineUserRole\MoonShineUserRoleResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
@@ -32,6 +33,7 @@ class MoonShineServiceProvider extends ServiceProvider
         MoonShineUserRoleResource::class,
         MasterAplikasiResource::class,
         MasterMetrikResource::class,
+        ReportSourceResource::class,
     ];
 
     /**
@@ -50,6 +52,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 TrxPbiLimitReportResource::class,
                 TrxPbiSettlementReportResource::class,
                 AppMetricResource::class,
+                ReportSourceResource::class,
             ])
             ->pages([
                 ...$core->getConfig()->getPages(),

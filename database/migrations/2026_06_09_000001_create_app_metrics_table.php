@@ -10,9 +10,7 @@ return new class extends Migration
     {
         Schema::create('app_metrics', function (Blueprint $table) {
             $table->id();
-            $table->timestamp('recorded_at')->useCurrent();
-            $table->string('nama_aplikasi');
-            $table->string('metric');
+            $table->timestamp('recorded_at', 6)->useCurrent();
             $table->string('value');
             $table->string('satuan');
             $table->timestamps();

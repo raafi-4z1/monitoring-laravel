@@ -68,7 +68,7 @@ class TrxPbiLimitReportFetchPage extends FormPage
                 ->content('Gunakan form ini untuk mengambil data dari Elasticsearch berdasarkan rentang tanggal tertentu dan menyimpannya ke database. Maksimal 90 hari per fetch.'),
 
             Alert::make(type: 'info')
-                ->content('⏳ Data diambil dari index <strong>wic-trx-pbi-ceklimit*</strong> field <strong>RequestTime</strong> (UTC, dikonversi ke WIB +07:00). Data dikelompokkan per hari per CCY2.'),
+                ->content('⏳ Data diambil dari index <strong>wic-trx-pbi-ceklimit*</strong> field <strong>RequestTime</strong> (UTC, dikonversi ke WIB +07:00). Data dikelompokkan per jam per mata uang.'),
 
             Divider::make(),
 

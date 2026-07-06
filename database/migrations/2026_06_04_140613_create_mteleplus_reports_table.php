@@ -6,31 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('mteleplus_reports', function (Blueprint $table) {
             $table->id();
-            $table->date('report_date')->unique();
-
-            $table->unsignedBigInteger('akt_success')->default(0);
-            $table->unsignedBigInteger('akt_fail')->default(0);
-            
-            $table->unsignedBigInteger('rpin_success')->default(0);
-            $table->unsignedBigInteger('rpin_fail')->default(0);
-            
-            $table->unsignedBigInteger('total_incoming')->default(0);
-            $table->unsignedBigInteger('total_outgoing')->default(0);
-            
+            $table->dateTime('report_hour');
+            $table->bigInteger('akt_success')->default(0);
+            $table->bigInteger('akt_fail')->default(0);
+            $table->bigInteger('rpin_success')->default(0);
+            $table->bigInteger('rpin_fail')->default(0);
+            $table->bigInteger('total_incoming')->default(0);
+            $table->bigInteger('total_outgoing')->default(0);
             $table->timestamps();
+
+            $table->unique('report_hour');
+            $table->index('report_hour');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('mteleplus_reports');

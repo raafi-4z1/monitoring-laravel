@@ -29,8 +29,8 @@ use MoonShine\UI\Components\Layout\Divider;
 use MoonShine\UI\Components\Layout\Grid;
 use MoonShine\UI\Components\Metrics\Wrapped\ValueMetric;
 use MoonShine\UI\Components\Table\TableBuilder;
-use MoonShine\UI\Fields\Date;
 use MoonShine\UI\Fields\DateRange;
+use MoonShine\UI\Fields\Number;
 use MoonShine\UI\Fields\Preview;
 use MoonShine\UI\Fields\Select;
 use MoonShine\UI\Fields\Text;
@@ -56,19 +56,21 @@ class TrxPbiLimitReportIndexPage extends IndexPage
     protected function fields(): iterable
     {
         return [
-            Date::make('Jam', 'report_hour')
-                ->sortable()
-                ->withTime()
-                ->format('Y-m-d H:i'),
-            Text::make('CCY2', 'ccy2')->sortable(),
-            Preview::make('Total Transaksi', 'total_trx')
-                ->changeFill(fn($item) => number_format($item->total_trx))
+            Preview::make('Tanggal', 'trx_date')
+                ->changeFill(fn($item) => $item->trx_date?->format('Y-m-d'))
+                ->sortable('trx_date'),
+            Preview::make('Jam', 'trx_hour')
+                ->changeFill(fn($item) => sprintf('%02d:00', $item->trx_hour))
+                ->sortable(fn($query, $_col, $dir) => $query->orderBy('trx_date', $dir)->orderBy('trx_hour', $dir)),
+            Text::make('Mata Uang', 'trx_currency')->sortable(),
+            Preview::make('Total Transaksi', 'trx_count')
+                ->changeFill(fn($item) => number_format($item->trx_count))
                 ->sortable(),
-            Preview::make('Total Nominal', 'total_nominal')
-                ->changeFill(fn($item) => number_format($item->total_nominal, 2, '.', ','))
+            Preview::make('Success', 'success_count')
+                ->changeFill(fn($item) => number_format($item->success_count))
                 ->sortable(),
-            Preview::make('NominalEqUSD', 'total_nominal_eq_usd')
-                ->changeFill(fn($item) => number_format($item->total_nominal_eq_usd, 2, '.', ','))
+            Preview::make('Total Nominal', 'trx_amount')
+                ->changeFill(fn($item) => number_format($item->trx_amount, 2, '.', ','))
                 ->sortable(),
         ];
     }
@@ -88,15 +90,16 @@ class TrxPbiLimitReportIndexPage extends IndexPage
      */
     protected function filters(): iterable
     {
-        $ccyOptions = TrxPbiLimitReport::distinct()
-            ->orderBy('ccy2')
-            ->pluck('ccy2', 'ccy2')
+        $currencyOptions = TrxPbiLimitReport::distinct()
+            ->orderBy('trx_currency')
+            ->pluck('trx_currency', 'trx_currency')
             ->toArray();
 
         return [
-            DateRange::make('Tanggal', 'report_hour'),
-            Select::make('CCY2', 'ccy2')
-                ->options($ccyOptions)
+            DateRange::make('Tanggal', 'trx_date'),
+            Number::make('Jam (0-23)', 'trx_hour'),
+            Select::make('Mata Uang', 'trx_currency')
+                ->options($currencyOptions)
                 ->nullable(),
         ];
     }
@@ -163,24 +166,27 @@ class TrxPbiLimitReportIndexPage extends IndexPage
 
     private function lastUpdateAlert(): Alert
     {
-        $latest = TrxPbiLimitReport::latest('report_hour')->first();
+        $latest = TrxPbiLimitReport::latest('trx_date')->latest('trx_hour')->first();
 
         return $latest
             ? Alert::make(type: 'info')
-                ->content("Data terakhir: <strong>{$latest->report_hour->format('d M Y H:i')}</strong> — diupdate: {$latest->updated_at->format('d M Y H:i')}")
+                ->content("Data terakhir: <strong>{$latest->trx_date->format('d M Y')} {$latest->trx_hour}:00</strong> — diupdate: {$latest->updated_at->format('d M Y H:i')}")
             : Alert::make(type: 'warning')
                 ->content('Belum ada data. Gunakan Fetch Manual.');
     }
 
     private function getFilteredData(): array
     {
-        $fromInput = request()->input('_data.filter.report_hour.from')
-                 ?? request()->input('filter.report_hour.from');
-        $toInput   = request()->input('_data.filter.report_hour.to')
-                 ?? request()->input('filter.report_hour.to');
+        $fromInput = request()->input('_data.filter.trx_date.from')
+                 ?? request()->input('filter.trx_date.from');
+        $toInput   = request()->input('_data.filter.trx_date.to')
+                 ?? request()->input('filter.trx_date.to');
 
-        $ccy2Filter = request()->input('_data.filter.ccy2')
-                   ?? request()->input('filter.ccy2');
+        $currencyFilter = request()->input('_data.filter.trx_currency')
+                       ?? request()->input('filter.trx_currency');
+
+        $hourFilter = request()->input('_data.filter.trx_hour')
+                   ?? request()->input('filter.trx_hour');
 
         $isDefault = empty($fromInput) && empty($toInput);
 
@@ -194,15 +200,17 @@ class TrxPbiLimitReportIndexPage extends IndexPage
                 . Carbon::parse($dateTo)->format('d M Y');
 
         $query = TrxPbiLimitReport::query()
-            ->whereBetween('report_hour', [
-                $dateFrom . ' 00:00:00',
-                $dateTo . ' 23:59:59',
-            ])
-            ->orderBy('report_hour')
-            ->orderBy('ccy2');
+            ->whereBetween('trx_date', [$dateFrom, $dateTo])
+            ->orderBy('trx_date')
+            ->orderBy('trx_hour')
+            ->orderBy('trx_currency');
 
-        if (!empty($ccy2Filter)) {
-            $query->where('ccy2', $ccy2Filter);
+        if (!empty($currencyFilter)) {
+            $query->where('trx_currency', $currencyFilter);
+        }
+
+        if ($hourFilter !== null && $hourFilter !== '') {
+            $query->where('trx_hour', (int) $hourFilter);
         }
 
         $data = $query->get();
@@ -221,45 +229,40 @@ class TrxPbiLimitReportIndexPage extends IndexPage
             ]);
         }
 
-        $totalTrx = $data->sum('total_trx');
-        $totalUsd = $data->sum('total_nominal_eq_usd');
-        $totalNom = $data->sum('total_nominal');
+        $totalTrx = $data->sum('trx_count');
+        $totalNom = $data->sum('trx_amount');
 
-        $byCcy2 = $data->groupBy('ccy2');
+        $byCurrency = $data->groupBy('trx_currency');
 
-        $allHours = $data->pluck('report_hour')
-            ->map(fn($h) => $h->format('Y-m-d H:i:s'))
+        // Slot key = "YYYY-MM-DD HH" (e.g. "2026-07-03 07")
+        $allSlots = $data->map(fn($r) => $r->trx_date->format('Y-m-d') . ' ' . sprintf('%02d', $r->trx_hour))
             ->unique()->sort()->values()->toArray();
 
-        $isSingleDay = $data->pluck('report_hour')
-            ->map(fn($h) => $h->format('Y-m-d'))->unique()->count() === 1;
+        $isSingleDay = $data->pluck('trx_date')->map(fn($d) => $d->format('Y-m-d'))->unique()->count() === 1;
         $label = $isSingleDay
-            ? fn(string $h) => Carbon::parse($h)->format('H:i')
-            : fn(string $h) => Carbon::parse($h)->format('d/m H:i');
+            ? fn(string $s) => substr($s, -2) . ':00'
+            : fn(string $s) => substr($s, 8, 2) . '/' . substr($s, 5, 2) . ' ' . substr($s, -2) . ':00';
 
-        // LineChart: Total Transaksi per jam per CCY2
-        $trxChart = LineChartMetric::make('Total Transaksi per Jam per CCY2');
-        foreach ($byCcy2 as $ccy2 => $rows) {
-            $byHour     = $rows->keyBy(fn($r) => $r->report_hour->format('Y-m-d H:i:s'));
-            $seriesData = collect($allHours)->mapWithKeys(
-                fn($h) => [$label($h) => (int) ($byHour[$h]->total_trx ?? 0)]
+        $trxChart = LineChartMetric::make('Total Transaksi per Jam per Mata Uang');
+        foreach ($byCurrency as $currency => $rows) {
+            $bySlot     = $rows->keyBy(fn($r) => $r->trx_date->format('Y-m-d') . ' ' . sprintf('%02d', $r->trx_hour));
+            $seriesData = collect($allSlots)->mapWithKeys(
+                fn($s) => [$label($s) => (int) ($bySlot[$s]->trx_count ?? 0)]
             )->toArray();
-            $trxChart->series(SeriesItem::make($ccy2, $seriesData)->line());
+            $trxChart->series(SeriesItem::make($currency, $seriesData)->line());
         }
 
-        // LineChart: NominalEqUSD per jam per CCY2
-        $usdChart = LineChartMetric::make('Total NominalEqUSD per Jam per CCY2');
-        foreach ($byCcy2 as $ccy2 => $rows) {
-            $byHour     = $rows->keyBy(fn($r) => $r->report_hour->format('Y-m-d H:i:s'));
-            $seriesData = collect($allHours)->mapWithKeys(
-                fn($h) => [$label($h) => round((float) ($byHour[$h]->total_nominal_eq_usd ?? 0), 2)]
+        $nomChart = LineChartMetric::make('Total Nominal per Jam per Mata Uang');
+        foreach ($byCurrency as $currency => $rows) {
+            $bySlot     = $rows->keyBy(fn($r) => $r->trx_date->format('Y-m-d') . ' ' . sprintf('%02d', $r->trx_hour));
+            $seriesData = collect($allSlots)->mapWithKeys(
+                fn($s) => [$label($s) => round((float) ($bySlot[$s]->trx_amount ?? 0), 2)]
             )->toArray();
-            $usdChart->series(SeriesItem::make($ccy2, $seriesData)->line());
+            $nomChart->series(SeriesItem::make($currency, $seriesData)->line());
         }
 
-        // Donut: Distribusi transaksi per CCY2 (total periode)
-        $donutTrx = $byCcy2->map(fn($rows) => (int) $rows->sum('total_trx'))->toArray();
-        $donutUsd = $byCcy2->map(fn($rows) => round((float) $rows->sum('total_nominal_eq_usd'), 2))->toArray();
+        $donutTrx = $byCurrency->map(fn($rows) => (int) $rows->sum('trx_count'))->toArray();
+        $donutNom = $byCurrency->map(fn($rows) => round((float) $rows->sum('trx_amount'), 2))->toArray();
 
         return Grid::make([
             Column::make([Divider::make()])->columnSpan(12),
@@ -269,36 +272,28 @@ class TrxPbiLimitReportIndexPage extends IndexPage
                     ->content("Data periode: <strong>{$period}</strong>"),
             ])->columnSpan(12),
 
-            // Value Metrics
             Column::make([
-                ValueMetric::make("Total Transaksi")
+                ValueMetric::make('Total Transaksi')
                     ->value(number_format($totalTrx)),
-            ])->columnSpan(4),
+            ])->columnSpan(6),
 
             Column::make([
-                ValueMetric::make("Total NominalEqUSD")
-                    ->value(number_format($totalUsd, 2)),
-            ])->columnSpan(4),
-
-            Column::make([
-                ValueMetric::make("Total Nominal")
+                ValueMetric::make('Total Nominal')
                     ->value(number_format($totalNom, 0)),
-            ])->columnSpan(4),
+            ])->columnSpan(6),
 
-            // Line Charts per jam
             Column::make([$trxChart])->columnSpan(12),
-            Column::make([$usdChart])->columnSpan(12),
+            Column::make([$nomChart])->columnSpan(12),
 
-            // Donut distribusi per CCY2
             Column::make([
-                DonutChartMetric::make('Distribusi Transaksi per CCY2')
+                DonutChartMetric::make('Distribusi Transaksi per Mata Uang')
                     ->values($donutTrx)
                     ->decimals(0),
             ])->columnSpan(6),
 
             Column::make([
-                DonutChartMetric::make('Distribusi NominalEqUSD per CCY2')
-                    ->values($donutUsd)
+                DonutChartMetric::make('Distribusi Nominal per Mata Uang')
+                    ->values($donutNom)
                     ->decimals(2),
             ])->columnSpan(6),
         ]);

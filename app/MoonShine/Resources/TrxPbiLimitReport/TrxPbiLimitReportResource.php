@@ -15,8 +15,8 @@ use MoonShine\ImportExport\Traits\ImportExportConcern;
 use MoonShine\Laravel\Resources\ModelResource;
 use MoonShine\Support\Enums\Action;
 use MoonShine\Support\ListOf;
-use MoonShine\UI\Fields\Date;
 use MoonShine\UI\Fields\Number;
+use MoonShine\UI\Fields\Preview;
 use MoonShine\UI\Fields\Text;
 
 /**
@@ -27,9 +27,9 @@ class TrxPbiLimitReportResource extends ModelResource implements HasImportExport
     use ImportExportConcern;
 
     protected string $model       = TrxPbiLimitReport::class;
-    protected string $column      = 'report_hour';
+    protected string $column      = 'trx_date';
     protected string $title       = 'TrxPBI Limit';
-    protected string $sortColumn  = 'report_hour';
+    protected string $sortColumn  = 'trx_date';
     protected int    $itemsPerPage = 25;
     protected bool   $usePagination = true;
 
@@ -71,11 +71,20 @@ class TrxPbiLimitReportResource extends ModelResource implements HasImportExport
     protected function exportFields(): iterable
     {
         return [
-            Date::make('Jam', 'report_hour'),
-            Text::make('CCY2', 'ccy2'),
-            Number::make('Total Transaksi', 'total_trx'),
-            Number::make('Total Nominal', 'total_nominal'),
-            Number::make('Total NominalEqUSD', 'total_nominal_eq_usd'),
+            Preview::make('app_id',             'id')->changeFill(fn($item) => $item->reportSource?->app_id ?? ''),
+            Preview::make('data_source',        'id')->changeFill(fn($item) => $item->reportSource?->data_source ?? ''),
+            Preview::make('data_source_name',   'id')->changeFill(fn($item) => $item->reportSource?->data_source_name ?? ''),
+            Preview::make('trx_date',           'trx_date')
+                ->changeFill(fn($item) => $item->trx_date?->format('Y-m-d')),
+            Preview::make('trx_hour',           'trx_hour')
+                ->changeFill(fn($item) => sprintf('%02d', $item->trx_hour)),
+            Preview::make('service_name',       'id')->changeFill(fn($item) => $item->reportSource?->service_name ?? ''),
+            Preview::make('service_integrator', 'id')->changeFill(fn($item) => $item->reportSource?->service_integrator ?? ''),
+            Text::make('trx_currency',          'trx_currency'),
+            Preview::make('trx_amount',         'trx_amount')
+                ->changeFill(fn($item) => number_format((float) $item->trx_amount, 0, ',', '.')),
+            Number::make('trx_count',           'trx_count'),
+            Number::make('success_count',       'success_count'),
         ];
     }
 

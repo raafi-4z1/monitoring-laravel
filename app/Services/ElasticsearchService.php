@@ -290,17 +290,14 @@ class ElasticsearchService
                         'min_doc_count'     => 1,
                     ],
                     'aggs' => [
-                        'by_ccy2' => [
+                        'by_currency' => [
                             'terms' => [
                                 'field' => 'CCY2.keyword',
                                 'size'  => 100,
                             ],
                             'aggs' => [
-                                'total_nominal' => [
+                                'trx_amount' => [
                                     'sum' => ['field' => 'Nominal'],
-                                ],
-                                'total_nominal_eq_usd' => [
-                                    'sum' => ['field' => 'NominalEqUSD'],
                                 ],
                             ],
                         ],
@@ -310,7 +307,7 @@ class ElasticsearchService
         ]);
     }
 
-    // ✅ Query TrxPBI Settlement dari log-wic-trx-pbi* per jam, dikelompokkan per CCY2
+    // ✅ Query TrxPBI Settlement dari log-wic-trx-pbi* per jam, dikelompokkan per currency
     public function queryTrxPbiSettlement(string $dateFrom, string $dateTo): array
     {
         return $this->search('log-wic-trx-pbi*', [
@@ -334,17 +331,14 @@ class ElasticsearchService
                         'min_doc_count'     => 1,
                     ],
                     'aggs' => [
-                        'by_ccy2' => [
+                        'by_currency' => [
                             'terms' => [
                                 'field' => 'CCY2.keyword',
                                 'size'  => 100,
                             ],
                             'aggs' => [
-                                'total_nominal' => [
+                                'trx_amount' => [
                                     'sum' => ['field' => 'Nominal'],
-                                ],
-                                'total_nominal_eq_usd' => [
-                                    'sum' => ['field' => 'NominalEqUSD'],
                                 ],
                             ],
                         ],
@@ -360,15 +354,14 @@ class ElasticsearchService
         $parsed  = [];
 
         foreach ($buckets as $bucket) {
-            $hour          = $bucket['key_as_string'];
+            $hour          = $bucket['key_as_string']; // "2026-07-03 07:00"
             $parsed[$hour] = [];
 
-            foreach ($bucket['by_ccy2']['buckets'] ?? [] as $ccyBucket) {
+            foreach ($bucket['by_currency']['buckets'] ?? [] as $ccyBucket) {
                 $parsed[$hour][] = [
-                    'ccy2'                 => $ccyBucket['key'],
-                    'total_trx'            => $ccyBucket['doc_count'],
-                    'total_nominal'        => $ccyBucket['total_nominal']['value'] ?? 0,
-                    'total_nominal_eq_usd' => $ccyBucket['total_nominal_eq_usd']['value'] ?? 0,
+                    'trx_currency' => $ccyBucket['key'],
+                    'trx_count'    => $ccyBucket['doc_count'],
+                    'trx_amount'   => $ccyBucket['trx_amount']['value'] ?? 0,
                 ];
             }
         }
@@ -382,15 +375,14 @@ class ElasticsearchService
         $parsed  = [];
 
         foreach ($buckets as $bucket) {
-            $hour          = $bucket['key_as_string'];
+            $hour          = $bucket['key_as_string']; // "2026-07-03 07:00"
             $parsed[$hour] = [];
 
-            foreach ($bucket['by_ccy2']['buckets'] ?? [] as $ccyBucket) {
+            foreach ($bucket['by_currency']['buckets'] ?? [] as $ccyBucket) {
                 $parsed[$hour][] = [
-                    'ccy2'                 => $ccyBucket['key'],
-                    'total_trx'            => $ccyBucket['doc_count'],
-                    'total_nominal'        => $ccyBucket['total_nominal']['value'] ?? 0,
-                    'total_nominal_eq_usd' => $ccyBucket['total_nominal_eq_usd']['value'] ?? 0,
+                    'trx_currency' => $ccyBucket['key'],
+                    'trx_count'    => $ccyBucket['doc_count'],
+                    'trx_amount'   => $ccyBucket['trx_amount']['value'] ?? 0,
                 ];
             }
         }

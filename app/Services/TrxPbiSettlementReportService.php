@@ -29,16 +29,22 @@ class TrxPbiSettlementReportService
 
             $saved = 0;
             foreach ($parsed as $hourStr => $rows) {
-                $reportHour = Carbon::createFromFormat('Y-m-d H:i', $hourStr)
-                    ->format('Y-m-d H:00:00');
+                // hourStr = "2026-07-01 07:00"
+                $dt      = Carbon::createFromFormat('Y-m-d H:i', $hourStr);
+                $trxDate = $dt->format('Y-m-d');
+                $trxHour = (int) $dt->format('H');
 
                 foreach ($rows as $row) {
                     TrxPbiSettlementReport::updateOrCreate(
-                        ['report_hour' => $reportHour, 'ccy2' => $row['ccy2']],
                         [
-                            'total_trx'            => $row['total_trx'],
-                            'total_nominal'        => $row['total_nominal'],
-                            'total_nominal_eq_usd' => $row['total_nominal_eq_usd'],
+                            'trx_date'     => $trxDate,
+                            'trx_hour'     => $trxHour,
+                            'trx_currency' => $row['trx_currency'],
+                        ],
+                        [
+                            'trx_count'    => $row['trx_count'],
+                            'success_count' => $row['trx_count'],
+                            'trx_amount'   => $row['trx_amount'],
                         ]
                     );
                     $saved++;

@@ -8,6 +8,7 @@ use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\MasterAplikasi\MasterAplikasiResource;
 use App\MoonShine\Resources\MasterMetrik\MasterMetrikResource;
+use App\MoonShine\Resources\ReportSource\ReportSourceResource;
 use App\MoonShine\Resources\MoonShineUser\MoonShineUserResource;
 use App\MoonShine\Resources\MoonShineUserRole\MoonShineUserRoleResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
@@ -54,6 +55,8 @@ final class MoonShineLayout extends AppLayout
                 MenuItem::make(MasterAplikasiResource::class)->icon('server')
                     ->canSee($isAdmin),
                 MenuItem::make(MasterMetrikResource::class)->icon('beaker')
+                    ->canSee($isAdmin),
+                MenuItem::make(ReportSourceResource::class, 'Report Sources')->icon('document-text')
                     ->canSee($isAdmin),
             ])->icon('presentation-chart-line'),
 

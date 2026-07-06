@@ -151,10 +151,7 @@ class Dashboard extends Page
 
     private function trxPbiLimitSection(Carbon $date): Grid
     {
-        $rows = TrxPbiLimitReport::whereBetween('report_hour', [
-            $date->format('Y-m-d') . ' 00:00:00',
-            $date->format('Y-m-d') . ' 23:59:59',
-        ])->get();
+        $rows = TrxPbiLimitReport::where('trx_date', $date->format('Y-m-d'))->get();
 
         if ($rows->isEmpty()) {
             return Grid::make([
@@ -164,27 +161,23 @@ class Dashboard extends Page
             ]);
         }
 
-        $byCcy2 = $rows->groupBy('ccy2');
+        $byCurrency = $rows->groupBy('trx_currency');
 
         $cols = [
             Column::make([
                 ValueMetric::make('Total Transaksi')
-                    ->value(number_format($rows->sum('total_trx'))),
-            ])->columnSpan(4),
-            Column::make([
-                ValueMetric::make('Total NominalEqUSD')
-                    ->value(number_format($rows->sum('total_nominal_eq_usd'), 2)),
-            ])->columnSpan(4),
+                    ->value(number_format($rows->sum('trx_count'))),
+            ])->columnSpan(6),
             Column::make([
                 ValueMetric::make('Total Nominal')
-                    ->value(number_format($rows->sum('total_nominal'), 0)),
-            ])->columnSpan(4),
+                    ->value(number_format($rows->sum('trx_amount'), 0)),
+            ])->columnSpan(6),
         ];
 
-        foreach ($byCcy2 as $ccy2 => $ccyRows) {
+        foreach ($byCurrency as $currency => $ccyRows) {
             $cols[] = Column::make([
-                ValueMetric::make("Trx {$ccy2}")
-                    ->value(number_format($ccyRows->sum('total_trx'))),
+                ValueMetric::make("Trx {$currency}")
+                    ->value(number_format($ccyRows->sum('trx_count'))),
             ])->columnSpan(3);
         }
 
@@ -193,10 +186,7 @@ class Dashboard extends Page
 
     private function trxPbiSettlementSection(Carbon $date): Grid
     {
-        $rows = TrxPbiSettlementReport::whereBetween('report_hour', [
-            $date->format('Y-m-d') . ' 00:00:00',
-            $date->format('Y-m-d') . ' 23:59:59',
-        ])->get();
+        $rows = TrxPbiSettlementReport::where('trx_date', $date->format('Y-m-d'))->get();
 
         if ($rows->isEmpty()) {
             return Grid::make([
@@ -206,27 +196,23 @@ class Dashboard extends Page
             ]);
         }
 
-        $byCcy2 = $rows->groupBy('ccy2');
+        $byCurrency = $rows->groupBy('trx_currency');
 
         $cols = [
             Column::make([
                 ValueMetric::make('Total Transaksi')
-                    ->value(number_format($rows->sum('total_trx'))),
-            ])->columnSpan(4),
-            Column::make([
-                ValueMetric::make('Total NominalEqUSD')
-                    ->value(number_format($rows->sum('total_nominal_eq_usd'), 2)),
-            ])->columnSpan(4),
+                    ->value(number_format($rows->sum('trx_count'))),
+            ])->columnSpan(6),
             Column::make([
                 ValueMetric::make('Total Nominal')
-                    ->value(number_format($rows->sum('total_nominal'), 0)),
-            ])->columnSpan(4),
+                    ->value(number_format($rows->sum('trx_amount'), 0)),
+            ])->columnSpan(6),
         ];
 
-        foreach ($byCcy2 as $ccy2 => $ccyRows) {
+        foreach ($byCurrency as $currency => $ccyRows) {
             $cols[] = Column::make([
-                ValueMetric::make("Trx {$ccy2}")
-                    ->value(number_format($ccyRows->sum('total_trx'))),
+                ValueMetric::make("Trx {$currency}")
+                    ->value(number_format($ccyRows->sum('trx_count'))),
             ])->columnSpan(3);
         }
 

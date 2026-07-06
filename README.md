@@ -1,25 +1,26 @@
 # Monitoring Laravel
 
-Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang mengintegrasikan data dari **Elasticsearch** ke database MySQL, dilengkapi dengan dashboard, laporan harian, scheduler otomatis, chart interaktif, dan export Excel.
+Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang mengintegrasikan data dari **Elasticsearch** ke database MySQL, dilengkapi dengan dashboard, laporan per jam, scheduler otomatis, chart interaktif, dan export Excel.
 
 ---
 
 ## Fitur
 
-- **Engine Notif Report** — laporan harian Engine Notif dari Elasticsearch
-- **mTeleplus Report** — laporan harian mTeleplus dari Elasticsearch
-- **TrxPBI Limit Report** — laporan per jam transaksi WIC PBI Cek Limit (index `wic-trx-pbi-ceklimit*`), dikelompokkan per CCY2
-- **TrxPBI Settlement Report** — laporan per jam transaksi WIC PBI Settlement (index `log-wic-trx-pbi*`), dikelompokkan per CCY2
+- **Engine Notif Report** — laporan per jam Engine Notif dari Elasticsearch
+- **mTeleplus Report** — laporan per jam mTeleplus dari Elasticsearch
+- **TrxPBI Limit Report** — laporan per jam transaksi WIC PBI Cek Limit (index `wic-trx-pbi-ceklimit*`), dikelompokkan per mata uang
+- **TrxPBI Settlement Report** — laporan per jam transaksi WIC PBI Settlement (index `log-wic-trx-pbi*`), dikelompokkan per mata uang
 - **App Metrics** — input manual metrik server (CPU, Memory, Disk, dll.) dengan grafik per jenis metrik
 - **Master Aplikasi** — manajemen daftar nama aplikasi (CRUD + soft-delete, khusus Admin)
 - **Master Metrik** — manajemen daftar jenis metrik beserta satuan default (CRUD + soft-delete, khusus Admin)
-- **Chart Interaktif** — LineChart & DonutChart via ApexCharts, dikelompokkan per CCY2 / per jenis metrik, ikut filter DateRange
+- **Report Sources** — konfigurasi metadata sumber data per layanan (app_id, data_source, data_source_name, service_integrator), khusus Admin
+- **Chart Interaktif** — LineChart & DonutChart via ApexCharts, dikelompokkan per mata uang / per jenis metrik, ikut filter DateRange
 - **Reactive Form** — saat memilih metrik, kolom satuan otomatis terisi dari `satuan_default` master metrik
 - **Scheduler Otomatis** — fetch data dari Elasticsearch setiap hari otomatis
 - **Fetch Manual** — ambil data rentang tanggal tertentu langsung dari admin panel (maks 90 hari)
 - **Filter Tanggal** — filter data berdasarkan rentang tanggal dengan `DateRange`
 - **Pagination & Sort** — navigasi data dengan dropdown per page dan pengurutan kolom
-- **Export Excel** — export data ke file `.xlsx` bawaan MoonShine
+- **Export Excel** — export data ke file `.xlsx` dengan format kolom lengkap termasuk metadata report_sources
 - **Role-based Access** — dua role panel: **Admin** (akses penuh termasuk manajemen user, role, dan master data) dan **User** (hanya akses laporan & app metrics)
 
 ---
@@ -41,10 +42,11 @@ monitoring-laravel/
 │   │   ├── AppMetric.php                        # Relasi ke MasterAplikasi & MasterMetrik
 │   │   ├── MasterAplikasi.php                   # Soft-delete, nama auto-UPPERCASE
 │   │   ├── MasterMetrik.php                     # Soft-delete, nama auto-UPPERCASE
+│   │   ├── ReportSource.php                     # Metadata sumber data per layanan
 │   │   ├── EngineNotifReport.php
 │   │   ├── MteleplusReport.php
-│   │   ├── TrxPbiLimitReport.php                # Per jam per CCY2, index wic-trx-pbi-ceklimit*
-│   │   └── TrxPbiSettlementReport.php           # Per jam per CCY2, index log-wic-trx-pbi*
+│   │   ├── TrxPbiLimitReport.php                # Per jam per mata uang, FK → report_sources
+│   │   └── TrxPbiSettlementReport.php           # Per jam per mata uang, FK → report_sources
 │   ├── MoonShine/
 │   │   ├── Layouts/
 │   │   │   └── MoonShineLayout.php              # Layout & menu (canSee per role)
@@ -55,17 +57,22 @@ monitoring-laravel/
 │   │       │   ├── Pages/
 │   │       │   │   ├── AppMetricIndexPage.php   # Table + grafik + filter FK
 │   │       │   │   └── AppMetricFormPage.php    # Form + reactive satuan
-│   │       │   └── AppMetricResource.php        # Eager load masterAplikasi & masterMetrik
+│   │       │   └── AppMetricResource.php
 │   │       ├── MasterAplikasi/
 │   │       │   ├── Pages/
-│   │       │   │   ├── MasterAplikasiIndexPage.php  # QueryTag Aktif/Sampah + restore
+│   │       │   │   ├── MasterAplikasiIndexPage.php
 │   │       │   │   └── MasterAplikasiFormPage.php
 │   │       │   └── MasterAplikasiResource.php
 │   │       ├── MasterMetrik/
 │   │       │   ├── Pages/
-│   │       │   │   ├── MasterMetrikIndexPage.php    # QueryTag Aktif/Sampah + restore
-│   │       │   │   └── MasterMetrikFormPage.php     # Select satuan dari MetricUnit enum
+│   │       │   │   ├── MasterMetrikIndexPage.php
+│   │       │   │   └── MasterMetrikFormPage.php
 │   │       │   └── MasterMetrikResource.php
+│   │       ├── ReportSource/
+│   │       │   ├── Pages/
+│   │       │   │   ├── ReportSourceIndexPage.php
+│   │       │   │   └── ReportSourceFormPage.php
+│   │       │   └── ReportSourceResource.php
 │   │       ├── EngineNotifReport/
 │   │       │   ├── Pages/
 │   │       │   │   ├── EngineNotifReportIndexPage.php
@@ -78,8 +85,8 @@ monitoring-laravel/
 │   │       │   └── MteleplusReportResource.php
 │   │       ├── TrxPbiLimitReport/
 │   │       │   ├── Pages/
-│   │       │   │   ├── TrxPbiLimitReportIndexPage.php   # Table + 7 chart per jam per CCY2
-│   │       │   │   └── TrxPbiLimitReportFetchPage.php   # Fetch manual, maks 90 hari
+│   │       │   │   ├── TrxPbiLimitReportIndexPage.php
+│   │       │   │   └── TrxPbiLimitReportFetchPage.php
 │   │       │   └── TrxPbiLimitReportResource.php
 │   │       ├── TrxPbiSettlementReport/
 │   │       │   ├── Pages/
@@ -100,7 +107,7 @@ monitoring-laravel/
 │   │   ├── AppServiceProvider.php
 │   │   └── MoonShineServiceProvider.php         # authorizationRules per resource
 │   └── Services/
-│       ├── ElasticsearchService.php             # query & parse per index (Engine Notif, Mteleplus, TrxPBI Limit, TrxPBI Settlement)
+│       ├── ElasticsearchService.php             # query & parse per index
 │       ├── EngineNotifReportService.php
 │       ├── MteleplusReportService.php
 │       ├── TrxPbiLimitReportService.php
@@ -108,24 +115,24 @@ monitoring-laravel/
 ├── config/
 │   └── elasticsearch.php
 ├── database/
-│   └── migrations/
-│       ├── 0001_01_01_000000_create_users_table.php
-│       ├── 0001_01_01_000001_create_cache_table.php
-│       ├── 0001_01_01_000002_create_jobs_table.php
-│       ├── 2020_10_04_115514_create_moonshine_roles_table.php
-│       ├── 2020_10_05_173148_create_moonshine_tables.php
-│       ├── 2026_05_22_014556_create_notifications_table.php
-│       ├── 2026_05_26_033044_create_engine_notif_reports_table.php
-│       ├── 2026_06_04_140613_create_mteleplus_reports_table.php
-│       ├── 2026_06_09_000001_create_app_metrics_table.php
-│       ├── 2026_06_09_000002_update_app_metrics_recorded_at_microseconds.php
-│       ├── 2026_06_10_000001_add_role_and_avatar_to_users_table.php
-│       ├── 2026_06_12_000001_create_master_tables.php
-│       ├── 2026_06_12_145700_add_master_relations_to_app_metrics_table.php
-│       ├── 2026_06_12_150800_drop_string_columns_from_app_metrics_table.php
-│       ├── 2026_07_01_000001_create_trx_pbi_limit_reports_table.php
-│       ├── 2026_07_01_000002_recreate_trx_pbi_limit_reports_hourly.php   # per-jam + unique(report_hour, ccy2)
-│       └── 2026_07_01_000003_create_trx_pbi_settlement_reports_table.php
+│   ├── migrations/
+│   │   ├── 0001_01_01_000000_create_users_table.php
+│   │   ├── 0001_01_01_000001_create_cache_table.php
+│   │   ├── 0001_01_01_000002_create_jobs_table.php
+│   │   ├── 2020_10_04_115514_create_moonshine_roles_table.php
+│   │   ├── 2020_10_05_173148_create_moonshine_tables.php
+│   │   ├── 2026_05_22_014556_create_notifications_table.php
+│   │   ├── 2026_05_26_033044_create_engine_notif_reports_table.php
+│   │   ├── 2026_06_04_140613_create_mteleplus_reports_table.php
+│   │   ├── 2026_06_09_000001_create_app_metrics_table.php
+│   │   ├── 2026_06_10_000001_add_role_and_avatar_to_users_table.php
+│   │   ├── 2026_06_12_000001_create_master_tables.php
+│   │   ├── 2026_07_03_000004_create_report_sources_table.php
+│   │   └── 2026_07_03_000006_create_trx_pbi_reports_table.php
+│   └── seeders/
+│       ├── DatabaseSeeder.php
+│       ├── MasterMetrikSeeder.php               # 9 metrik default (CPU, MEMORY, DISK, dst.)
+│       └── ReportSourceSeeder.php               # Metadata sumber data TrxPBI Limit & Settlement
 └── routes/
     ├── web.php                                  # Redirect / → /admin
     └── console.php                              # Definisi scheduler
@@ -172,11 +179,15 @@ ES_USERNAME=app
 ES_PASSWORD=app
 ```
 
-### 4. Migrasi Database
+### 4. Migrasi & Seed Database
 
 ```bash
-php artisan migrate
+php artisan migrate --seed
 ```
+
+Perintah `--seed` akan mengisi data awal:
+- **9 metrik default** (`MasterMetrikSeeder`): CPU, MEMORY, DISK, NETWORK_IN, NETWORK_OUT, LOAD_1M, LOAD_5M, LOAD_15M, RESPONSE_TIME
+- **2 report sources** (`ReportSourceSeeder`): metadata TrxPBI Limit & Settlement (app_id, data_source, data_source_name, service_integrator)
 
 ### 5. Buat Admin Panel
 
@@ -213,8 +224,6 @@ Untuk mengakses dari perangkat lain dalam satu jaringan menggunakan Laragon:
 Scheduler didefinisikan di `routes/console.php`:
 
 ```php
-use Illuminate\Support\Facades\Schedule;
-
 Schedule::command('report:fetch-engine-notif')
     ->dailyAt('00:05')
     ->withoutOverlapping()
@@ -304,8 +313,8 @@ Elasticsearch
                ▼
      Service::fetchAndStore(Carbon $date)
                │
-               ├── ElasticsearchService::query...()     ← agregasi per jam / per hari
-               └── Model::updateOrCreate()              ← upsert unique key
+               ├── ElasticsearchService::query...()     ← agregasi per jam per mata uang
+               └── Model::updateOrCreate()              ← upsert unique key (trx_date, trx_hour, trx_currency)
                          │
                          ▼
                Database MySQL
@@ -314,14 +323,29 @@ Elasticsearch
                MoonShine Panel
                     ├── Table (filter, sort, pagination, export Excel)
                     └── Chart (Fragment async + withQueryParams)
-                              ├── ValueMetric  (Total Trx, Total NominalEqUSD, Total Nominal)
-                              ├── LineChartMetric (per jam per CCY2)
-                              └── DonutChartMetric (distribusi per CCY2)
+                              ├── ValueMetric  (Total Trx, Total Nominal)
+                              ├── LineChart    (per jam per mata uang)
+                              └── DonutChart   (distribusi per mata uang)
 ```
 
 ---
 
 ## Struktur Tabel Database
+
+### `report_sources`
+
+> Metadata sumber data per layanan — digunakan untuk kolom export Excel TrxPBI.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | bigint | Primary key |
+| `service_name` | varchar(50) | Identifier layanan — unique (mis. `trx_pbi_limit`) |
+| `app_id` | varchar(50) | ID aplikasi (mis. `AFOAFO0252`) |
+| `data_source` | varchar(50) | Jenis sumber data (`ELK`, `Dynatrace`, `DBMS`) |
+| `data_source_name` | varchar(100) | Nama index/sumber (mis. `wic-trx-pbi-ceklimit*`) |
+| `service_integrator` | varchar(50) | Nama integrator (mis. `WIC`) |
+| `created_at` | timestamp | — |
+| `updated_at` | timestamp | — |
 
 ### `master_aplikasi`
 
@@ -346,64 +370,46 @@ Elasticsearch
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
-**Seed awal (9 metrik):**
-
-| Nama | Satuan |
-|---|---|
-| CPU | % |
-| MEMORY | % |
-| DISK | % |
-| NETWORK_IN | MB/s |
-| NETWORK_OUT | MB/s |
-| LOAD_1M | - |
-| LOAD_5M | - |
-| LOAD_15M | - |
-| RESPONSE_TIME | ms |
-
 ### `app_metrics`
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | `id` | bigint | Primary key |
-| `recorded_at` | timestamp(6) | Waktu pencatatan — microsecond precision, auto-unique |
+| `recorded_at` | timestamp(6) | Waktu pencatatan — microsecond precision, auto-fill detik |
+| `value` | varchar | Nilai metrik (mis. `75`, `2.4`) |
+| `satuan` | varchar | Satuan metrik |
 | `master_aplikasi_id` | bigint | FK → `master_aplikasi.id` |
 | `master_metrik_id` | bigint | FK → `master_metrik.id` |
-| `value` | varchar | Nilai metrik (mis. `75`, `2.4`) |
-| `satuan` | varchar | Satuan metrik — auto-terisi dari master saat input |
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
-> **Catatan:** Second dan microsecond pada `recorded_at` diisi otomatis saat menyimpan — user hanya memilih tanggal, jam, dan menit.
-
 ### `engine_notif_reports`
 
-> Kolom total **tidak disimpan di DB** — dihitung via **Eloquent Accessor**.
+> Data diambil dari Elasticsearch, disimpan per jam.
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | `id` | bigint | Primary key |
-| `report_date` | date | Tanggal laporan (unique) |
+| `report_hour` | datetime | Jam laporan (WIB, dibulatkan ke awal jam) — unique |
 | `mvrk_success` | bigint | MVRK berhasil |
 | `mvrk_fail` | bigint | MVRK gagal |
 | `sms_success` | bigint | SMS berhasil |
 | `sms_fail` | bigint | SMS gagal |
 | `email_success` | bigint | Email berhasil |
 | `email_fail` | bigint | Email gagal |
-| `avg_response_time` | decimal(10,2) | Rata-rata response time (detik) |
-| `avg_lifespan` | decimal(10,2) | Rata-rata lifespan (milidetik) |
+| `avg_response_time` | decimal(10,2) | Rata-rata response time |
+| `avg_lifespan` | decimal(10,2) | Rata-rata lifespan |
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
-**Accessor:** `mvrk_total`, `sms_total`, `email_total`, `total_success`, `total_fail`
-
 ### `mteleplus_reports`
 
-> Kolom total **tidak disimpan di DB** — dihitung via **Eloquent Accessor**.
+> Data diambil dari Elasticsearch, disimpan per jam.
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | `id` | bigint | Primary key |
-| `report_date` | date | Tanggal laporan (unique) |
+| `report_hour` | datetime | Jam laporan (WIB, dibulatkan ke awal jam) — unique |
 | `akt_success` | bigint | AKT berhasil |
 | `akt_fail` | bigint | AKT gagal |
 | `rpin_success` | bigint | RPIN berhasil |
@@ -413,8 +419,6 @@ Elasticsearch
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
-**Accessor:** `akt_total`, `rpin_total`, `total_success`, `total_fail`
-
 ### `trx_pbi_limit_reports`
 
 > Data diambil dari index Elasticsearch **`wic-trx-pbi-ceklimit*`**, field waktu: `RequestTime` (UTC → WIB +07:00).
@@ -422,15 +426,19 @@ Elasticsearch
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | `id` | bigint | Primary key |
-| `report_hour` | datetime | Jam transaksi (WIB, dibulatkan ke awal jam) |
-| `ccy2` | varchar | Kode mata uang tujuan (contoh: `USD`, `SGD`) |
-| `total_trx` | integer | Jumlah transaksi dalam jam tersebut |
-| `total_nominal` | float | Total nominal transaksi |
-| `total_nominal_eq_usd` | float | Total nominal setara USD |
+| `report_source_id` | bigint | FK → `report_sources.id` (nullable) |
+| `trx_date` | date | Tanggal transaksi |
+| `trx_hour` | tinyint unsigned | Jam transaksi (0–23) |
+| `trx_currency` | varchar(10) | Kode mata uang (mis. `USD`, `SGD`) |
+| `trx_count` | bigint | Jumlah transaksi |
+| `success_count` | bigint | Jumlah transaksi sukses |
+| `trx_amount` | decimal(20,2) | Total nominal transaksi |
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
-**Unique key:** `(report_hour, ccy2)` — upsert otomatis saat fetch ulang
+**Unique key:** `(trx_date, trx_hour, trx_currency)`
+
+**Export Excel kolom:** `app_id, data_source, data_source_name, trx_date, trx_hour, service_name, service_integrator, trx_currency, trx_amount, trx_count, success_count`
 
 ### `trx_pbi_settlement_reports`
 
@@ -439,15 +447,19 @@ Elasticsearch
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | `id` | bigint | Primary key |
-| `report_hour` | datetime | Jam transaksi (WIB, dibulatkan ke awal jam) |
-| `ccy2` | varchar | Kode mata uang tujuan (contoh: `USD`, `SGD`) |
-| `total_trx` | integer | Jumlah transaksi dalam jam tersebut |
-| `total_nominal` | float | Total nominal transaksi |
-| `total_nominal_eq_usd` | float | Total nominal setara USD |
+| `report_source_id` | bigint | FK → `report_sources.id` (nullable) |
+| `trx_date` | date | Tanggal transaksi |
+| `trx_hour` | tinyint unsigned | Jam transaksi (0–23) |
+| `trx_currency` | varchar(10) | Kode mata uang (mis. `USD`, `SGD`) |
+| `trx_count` | bigint | Jumlah transaksi |
+| `success_count` | bigint | Jumlah transaksi sukses |
+| `trx_amount` | decimal(20,2) | Total nominal transaksi |
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
-**Unique key:** `(report_hour, ccy2)` — upsert otomatis saat fetch ulang
+**Unique key:** `(trx_date, trx_hour, trx_currency)`
+
+**Export Excel kolom:** `app_id, data_source, data_source_name, trx_date, trx_hour, service_name, service_integrator, trx_currency, trx_amount, trx_count, success_count`
 
 ---
 
@@ -455,12 +467,12 @@ Elasticsearch
 
 | Role | Menu yang Terlihat |
 |---|---|
-| **Admin** | Manajemen (Users, Roles) + App Metric (Data Metrik, Master Aplikasi, Master Metrik) + Elastic |
+| **Admin** | Manajemen (Users, Roles) + App Metric (Data Metrik, Master Aplikasi, Master Metrik, Report Sources) + Elastic |
 | **User** | App Metric (Data Metrik saja) + Elastic |
 
 - Admin dibuat via `php artisan moonshine:user`
 - User tambahan dibuat dari **Manajemen → Admins** di panel
-- Akses ke resource Master Aplikasi/Metrik dan Manajemen User/Role diblokir secara server-side untuk role User
+- Akses ke resource Master Aplikasi/Metrik, Report Sources, dan Manajemen User/Role diblokir secara server-side untuk role User
 
 ---
 
@@ -474,27 +486,23 @@ Elasticsearch
 
 ### Menu: App Metric
 
-**Data Metrik** (`/admin/resource/app-metric-resource`)
-
-- Tabel data metrik dengan kolom Timestamp, Aplikasi, Metrik, Value, Satuan
-- Filter DateRange (default 7 hari terakhir) + filter dropdown Aplikasi & Metrik dari master
-- Dropdown per page + column selection
-- **Form tambah:** pilih aplikasi & metrik dari dropdown master; satuan auto-terisi saat metrik dipilih (reactive), bisa diubah manual
-- **Grafik:** satu LineChart per jenis metrik, satu series per aplikasi
+**Data Metrik** — tabel metrik dengan filter DateRange, dropdown Aplikasi & Metrik, grafik LineChart per jenis metrik
 
 **Master Aplikasi** (khusus Admin) — CRUD daftar nama aplikasi; soft-delete dengan tab Sampah & tombol Pulihkan
 
 **Master Metrik** (khusus Admin) — CRUD jenis metrik + satuan default; soft-delete dengan tab Sampah & tombol Pulihkan
 
+**Report Sources** (khusus Admin) — CRUD metadata sumber data per layanan; digunakan untuk mengisi kolom export Excel TrxPBI
+
 ### Menu: Elastic
 
-**Engine Notif Reports** — tabel harian, chart, fetch manual, export Excel
+**Engine Notif Reports** — tabel per jam, chart, fetch manual, export Excel
 
-**Mteleplus Reports** — tabel harian, chart, fetch manual, export Excel
+**Mteleplus Reports** — tabel per jam, chart, fetch manual, export Excel
 
-**TrxPBI Limit** — tabel per jam per CCY2, 7 chart interaktif (3 ValueMetric + 2 LineChart + 2 DonutChart), fetch manual, export Excel
+**TrxPBI Limit** — tabel per jam per mata uang, chart interaktif (ValueMetric + LineChart + DonutChart), fetch manual, export Excel dengan kolom report_sources
 
-**TrxPBI Settlement** — tabel per jam per CCY2, 7 chart interaktif (3 ValueMetric + 2 LineChart + 2 DonutChart), fetch manual, export Excel
+**TrxPBI Settlement** — tabel per jam per mata uang, chart interaktif (ValueMetric + LineChart + DonutChart), fetch manual, export Excel dengan kolom report_sources
 
 ---
 

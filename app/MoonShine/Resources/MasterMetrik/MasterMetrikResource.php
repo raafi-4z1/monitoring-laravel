@@ -9,6 +9,7 @@ use App\MoonShine\Resources\MasterMetrik\Pages\MasterMetrikFormPage;
 use App\MoonShine\Resources\MasterMetrik\Pages\MasterMetrikIndexPage;
 use Illuminate\Database\Eloquent\Builder;
 use MoonShine\Laravel\Resources\ModelResource;
+use MoonShine\Support\Enums\PageType;
 use MoonShine\UI\Fields\ID;
 use MoonShine\UI\Fields\Text;
 
@@ -20,6 +21,7 @@ class MasterMetrikResource extends ModelResource
     protected string $model  = MasterMetrik::class;
     protected string $column = 'nama';
     protected int $itemsPerPage = 20;
+    protected ?PageType $redirectAfterSave = PageType::INDEX;
 
     public function getTitle(): string
     {

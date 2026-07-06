@@ -9,6 +9,7 @@ use App\MoonShine\Resources\ReportSource\Pages\ReportSourceFormPage;
 use App\MoonShine\Resources\ReportSource\Pages\ReportSourceIndexPage;
 use MoonShine\Contracts\Core\PageContract;
 use MoonShine\Laravel\Resources\ModelResource;
+use MoonShine\Support\Enums\PageType;
 
 /**
  * @extends ModelResource<ReportSource, ReportSourceIndexPage, ReportSourceFormPage>
@@ -19,6 +20,8 @@ class ReportSourceResource extends ModelResource
     protected string $column     = 'service_name';
     protected string $sortColumn = 'id';
     protected int    $itemsPerPage = 20;
+    
+    protected ?PageType $redirectAfterSave = PageType::INDEX;
 
     public function getTitle(): string
     {

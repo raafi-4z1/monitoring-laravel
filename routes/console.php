@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('report:fetch-engine-notif')
@@ -17,7 +18,9 @@ Schedule::command('report:fetch-trx-pbi-limit')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/trx-pbi-limit-fetch.log'));
 
+// then() memicu export CSV setelah fetch settlement (command terakhir) selesai
 Schedule::command('report:fetch-trx-pbi-settlement')
     ->dailyAt('00:11')
     ->withoutOverlapping()
+    ->then(fn () => Artisan::call('report:export-trx-pbi-csv'))
     ->appendOutputTo(storage_path('logs/trx-pbi-settlement-fetch.log'));

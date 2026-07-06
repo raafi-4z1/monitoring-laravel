@@ -18,6 +18,7 @@ use MoonShine\Support\ListOf;
 use MoonShine\UI\Fields\Date;
 use MoonShine\UI\Fields\Number;
 use MoonShine\UI\Fields\Preview;
+use MoonShine\Support\Enums\PageType;
 
 /**
  * @extends ModelResource<EngineNotifReport, EngineNotifReportIndexPage,  EngineNotifReportFetchPage>
@@ -33,6 +34,7 @@ class EngineNotifReportResource extends ModelResource implements HasImportExport
     protected string $sortColumn = 'report_hour';
     protected int $itemsPerPage = 10;
     protected bool $usePagination = true;
+    protected ?PageType $redirectAfterSave = PageType::INDEX;
 
     protected function activeActions(): ListOf
     {
@@ -102,14 +104,11 @@ class EngineNotifReportResource extends ModelResource implements HasImportExport
         ];
     }
 
-    protected function export(): ?Handler
+    protected function handlers(): ListOf
     {
-        return ExportHandler::make('Export Excel')
-            ->filename('engine_notif_' . date('Ymd-His'));
-    }
-
-    protected function import(): ?Handler
-    {
-        return null;
+        return new ListOf(Handler::class, [
+            ExportHandler::make('Export Excel')->alias('export-excel')->filename('engine_notif_' . date('Ymd-His')),
+            ExportHandler::make('Export CSV')->alias('export-csv')->csv()->filename('engine_notif_' . date('Ymd-His')),
+        ]);
     }
 }

@@ -20,7 +20,8 @@ Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang menginteg
 - **Fetch Manual** — ambil data rentang tanggal tertentu langsung dari admin panel (maks 90 hari)
 - **Filter Tanggal** — filter data berdasarkan rentang tanggal dengan `DateRange`
 - **Pagination & Sort** — navigasi data dengan dropdown per page dan pengurutan kolom
-- **Export Excel** — export data ke file `.xlsx` dengan format kolom lengkap termasuk metadata report_sources
+- **Export Excel & CSV** — export data ke file `.xlsx` atau `.csv` dengan format kolom lengkap termasuk metadata report_sources
+- **Auto Export CSV TrxPBI** — setelah fetch harian selesai, data TrxPBI Limit & Settlement kemarin diekspor otomatis ke satu file CSV di `storage/app/exports/`
 - **Role-based Access** — dua role panel: **Admin** (akses penuh termasuk manajemen user, role, dan master data) dan **User** (hanya akses laporan & app metrics)
 
 ---
@@ -35,7 +36,8 @@ monitoring-laravel/
 │   │       ├── FetchEngineNotifReport.php
 │   │       ├── FetchMteleplusReport.php
 │   │       ├── FetchTrxPbiLimitReport.php
-│   │       └── FetchTrxPbiSettlementReport.php
+│   │       ├── FetchTrxPbiSettlementReport.php
+│   │       └── ExportTrxPbiCsv.php              # Export gabungan TrxPBI Limit+Settlement ke CSV
 │   ├── Enums/
 │   │   └── MetricUnit.php                       # Enum satuan metrik (%, GB, MB/s, ms, dst.)
 │   ├── Models/
@@ -239,28 +241,47 @@ Schedule::command('report:fetch-trx-pbi-limit')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/trx-pbi-limit-fetch.log'));
 
+// Export CSV otomatis dipicu setelah fetch settlement (command terakhir) selesai
 Schedule::command('report:fetch-trx-pbi-settlement')
     ->dailyAt('00:11')
     ->withoutOverlapping()
+    ->then(fn () => Artisan::call('report:export-trx-pbi-csv'))
     ->appendOutputTo(storage_path('logs/trx-pbi-settlement-fetch.log'));
 ```
 
+Alur harian otomatis:
+
+| Waktu | Aksi |
+|---|---|
+| 00:05 | Fetch Engine Notif dari Elasticsearch |
+| 00:07 | Fetch mTeleplus dari Elasticsearch |
+| 00:09 | Fetch TrxPBI Limit dari Elasticsearch |
+| 00:11 | Fetch TrxPBI Settlement dari Elasticsearch |
+| ~00:11+ | **Auto export** TrxPBI (Limit + Settlement) kemarin ke CSV |
+
+File CSV disimpan di: `storage/app/exports/YYYY-MM-DD/trx_pbi_YYYYMMDD.csv`
+
 ### Menjalankan Scheduler
 
-**Development — Terminal:**
+**Development — Terminal (polling tiap menit, biarkan berjalan):**
 
 ```bash
 php artisan schedule:work
 ```
 
-**Development (Windows) — Task Scheduler:**
+**Windows — Windows Task Scheduler:**
+
+Web server (Apache/Nginx Laragon) **tidak perlu aktif** — scheduler berjalan via PHP CLI. Yang harus jalan hanyalah **MySQL**.
 
 ```
 Program  : C:\laragon\bin\php\php-8.2\php.exe
 Arguments: artisan schedule:run
 Start in : C:\path\to\monitoring-laravel
-Repeat   : Every 1 minute
+Trigger  : Daily, 00:00
+Repeat   : Every 1 minute, for a duration of 30 minutes
 ```
+
+> Durasi 30 menit (00:00–00:30) sudah mencakup semua jadwal yang berakhir sekitar 00:11. Setelah itu task scheduler berhenti otomatis hingga tengah malam berikutnya.
 
 **Production (Linux) — Crontab:**
 
@@ -284,6 +305,12 @@ php artisan report:fetch-trx-pbi-limit
 
 # Fetch TrxPBI Settlement kemarin dari Elasticsearch
 php artisan report:fetch-trx-pbi-settlement
+
+# Export TrxPBI Limit + Settlement kemarin ke satu file CSV
+php artisan report:export-trx-pbi-csv
+
+# Export TrxPBI untuk tanggal tertentu
+php artisan report:export-trx-pbi-csv --date=2026-07-05
 
 # Jalankan scheduler manual
 php artisan schedule:run
@@ -319,10 +346,12 @@ Elasticsearch
                          ▼
                Database MySQL
                          │
-                         ▼
-               MoonShine Panel
-                    ├── Table (filter, sort, pagination, export Excel)
-                    └── Chart (Fragment async + withQueryParams)
+                         ├── MoonShine Panel
+                         │        ├── Table (filter, sort, pagination, export Excel/CSV)
+                         │        └── Chart (Fragment async + withQueryParams)
+                         │
+                         └── Auto Export CSV (setelah fetch settlement selesai)
+                                  └── storage/app/exports/YYYY-MM-DD/trx_pbi_YYYYMMDD.csv
                               ├── ValueMetric  (Total Trx, Total Nominal)
                               ├── LineChart    (per jam per mata uang)
                               └── DonutChart   (distribusi per mata uang)
@@ -438,7 +467,7 @@ Elasticsearch
 
 **Unique key:** `(trx_date, trx_hour, trx_currency)`
 
-**Export Excel kolom:** `app_id, data_source, data_source_name, trx_date, trx_hour, service_name, service_integrator, trx_currency, trx_amount, trx_count, success_count`
+**Export kolom (Excel & CSV):** `app_id, data_source, data_source_name, trx_date, trx_hour, service_name, service_integrator, trx_currency, trx_amount, trx_count, success_count`
 
 ### `trx_pbi_settlement_reports`
 
@@ -459,7 +488,7 @@ Elasticsearch
 
 **Unique key:** `(trx_date, trx_hour, trx_currency)`
 
-**Export Excel kolom:** `app_id, data_source, data_source_name, trx_date, trx_hour, service_name, service_integrator, trx_currency, trx_amount, trx_count, success_count`
+**Export kolom (Excel & CSV):** `app_id, data_source, data_source_name, trx_date, trx_hour, service_name, service_integrator, trx_currency, trx_amount, trx_count, success_count`
 
 ---
 
@@ -496,13 +525,13 @@ Elasticsearch
 
 ### Menu: Elastic
 
-**Engine Notif Reports** — tabel per jam, chart, fetch manual, export Excel
+**Engine Notif Reports** — tabel per jam, chart, fetch manual, export Excel & CSV
 
-**Mteleplus Reports** — tabel per jam, chart, fetch manual, export Excel
+**Mteleplus Reports** — tabel per jam, chart, fetch manual, export Excel & CSV
 
-**TrxPBI Limit** — tabel per jam per mata uang, chart interaktif (ValueMetric + LineChart + DonutChart), fetch manual, export Excel dengan kolom report_sources
+**TrxPBI Limit** — tabel per jam per mata uang, chart interaktif (ValueMetric + LineChart + DonutChart), fetch manual, export Excel & CSV dengan kolom report_sources
 
-**TrxPBI Settlement** — tabel per jam per mata uang, chart interaktif (ValueMetric + LineChart + DonutChart), fetch manual, export Excel dengan kolom report_sources
+**TrxPBI Settlement** — tabel per jam per mata uang, chart interaktif (ValueMetric + LineChart + DonutChart), fetch manual, export Excel & CSV dengan kolom report_sources
 
 ---
 

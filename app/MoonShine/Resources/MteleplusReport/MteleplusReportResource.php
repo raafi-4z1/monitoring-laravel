@@ -17,6 +17,7 @@ use MoonShine\Support\Enums\Action;
 use MoonShine\Support\ListOf;
 use MoonShine\UI\Fields\Date;
 use MoonShine\UI\Fields\Number;
+use MoonShine\Support\Enums\PageType;
 use MoonShine\UI\Fields\Preview;
 
 /**
@@ -33,6 +34,7 @@ class MteleplusReportResource extends ModelResource implements HasImportExportCo
     protected string $sortColumn = 'report_hour';
     protected int $itemsPerPage = 10;
     protected bool $usePagination = true;
+    protected ?PageType $redirectAfterSave = PageType::INDEX;
 
     protected function activeActions(): ListOf
     {
@@ -92,14 +94,11 @@ class MteleplusReportResource extends ModelResource implements HasImportExportCo
         ];
     }
 
-    protected function export(): ?Handler
+    protected function handlers(): ListOf
     {
-        return ExportHandler::make('Export Excel')
-            ->filename('mteleplus_' . date('Ymd-His'));
-    }
-
-    protected function import(): ?Handler
-    {
-        return null;
+        return new ListOf(Handler::class, [
+            ExportHandler::make('Export Excel')->alias('export-excel')->filename('mteleplus_' . date('Ymd-His')),
+            ExportHandler::make('Export CSV')->alias('export-csv')->csv()->filename('mteleplus_' . date('Ymd-His')),
+        ]);
     }
 }

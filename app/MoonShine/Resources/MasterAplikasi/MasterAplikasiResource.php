@@ -8,8 +8,8 @@ use App\Models\MasterAplikasi;
 use App\MoonShine\Resources\MasterAplikasi\Pages\MasterAplikasiFormPage;
 use App\MoonShine\Resources\MasterAplikasi\Pages\MasterAplikasiIndexPage;
 use Illuminate\Database\Eloquent\Builder;
-use MoonShine\Contracts\Core\PageContract;
 use MoonShine\Laravel\Resources\ModelResource;
+use MoonShine\Support\Enums\PageType;
 use MoonShine\UI\Fields\ID;
 use MoonShine\UI\Fields\Text;
 
@@ -21,6 +21,7 @@ class MasterAplikasiResource extends ModelResource
     protected string $model  = MasterAplikasi::class;
     protected string $column = 'nama';
     protected int $itemsPerPage = 20;
+    protected ?PageType $redirectAfterSave = PageType::INDEX;
 
     public function getTitle(): string
     {

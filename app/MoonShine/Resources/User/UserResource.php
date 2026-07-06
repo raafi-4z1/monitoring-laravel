@@ -14,6 +14,8 @@ use MoonShine\ImportExport\Contracts\HasImportExportContract;
 use MoonShine\ImportExport\ExportHandler;
 use MoonShine\ImportExport\Traits\ImportExportConcern;
 use MoonShine\Laravel\Resources\ModelResource;
+use MoonShine\Support\Enums\PageType;
+use MoonShine\Support\ListOf;
 use MoonShine\UI\Fields\Email;
 use MoonShine\UI\Fields\ID;
 use MoonShine\UI\Fields\Text;
@@ -29,6 +31,8 @@ class UserResource extends ModelResource implements HasImportExportContract
     protected string $column = 'email';
     protected int $itemsPerPage = 10;
     protected bool $usePagination = true;
+
+    protected ?PageType $redirectAfterSave = PageType::INDEX;
 
     public function getItemsPerPage(): int
     {
@@ -85,16 +89,11 @@ class UserResource extends ModelResource implements HasImportExportContract
         ];
     }
 
-    // ✅ Konfigurasi export - tombol otomatis muncul di UserIndexPage
-    protected function export(): ?Handler
+    protected function handlers(): ListOf
     {
-        return ExportHandler::make('Export Excel')
-            ->filename('users_' . date('Ymd-His'));
-    }
-
-    // ✅ Nonaktifkan import
-    protected function import(): ?Handler
-    {
-        return null;
+        return new ListOf(Handler::class, [
+            ExportHandler::make('Export Excel')->alias('export-excel')->filename('users_' . date('Ymd-His')),
+            ExportHandler::make('Export CSV')->alias('export-csv')->csv()->filename('users_' . date('Ymd-His')),
+        ]);
     }
 }

@@ -10,6 +10,7 @@ use App\MoonShine\Resources\AppMetric\Pages\AppMetricIndexPage;
 use Illuminate\Database\Eloquent\Builder;
 use MoonShine\Contracts\Core\PageContract;
 use MoonShine\Laravel\Resources\ModelResource;
+use MoonShine\Support\Enums\PageType;
 
 /**
  * @extends ModelResource<AppMetric, AppMetricIndexPage, AppMetricFormPage>
@@ -19,6 +20,7 @@ class AppMetricResource extends ModelResource
     protected string $model  = AppMetric::class;
     protected string $column = 'id';
     protected string $title  = 'App Metrics';
+    protected ?PageType $redirectAfterSave = PageType::INDEX;
 
     protected function resolveQuery(): Builder
     {

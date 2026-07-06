@@ -12,6 +12,7 @@ use MoonShine\MenuManager\Attributes\Group;
 use MoonShine\MenuManager\Attributes\Order;
 use MoonShine\Support\Attributes\Icon;
 use MoonShine\Support\Enums\Action;
+use MoonShine\Support\Enums\PageType;
 use MoonShine\Support\ListOf;
 
 /**
@@ -29,6 +30,8 @@ class MoonShineUserResource extends ModelResource
     protected array $with = ['moonshineUserRole'];
 
     protected bool $simplePaginate = true;
+    
+    protected ?PageType $redirectAfterSave = PageType::INDEX;
 
     public function getTitle(): string
     {

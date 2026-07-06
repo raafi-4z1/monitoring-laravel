@@ -14,6 +14,7 @@ use MoonShine\ImportExport\ExportHandler;
 use MoonShine\ImportExport\Traits\ImportExportConcern;
 use MoonShine\Laravel\Resources\ModelResource;
 use MoonShine\Support\Enums\Action;
+use MoonShine\Support\Enums\PageType;
 use MoonShine\Support\ListOf;
 use MoonShine\UI\Fields\Number;
 use MoonShine\UI\Fields\Preview;
@@ -32,6 +33,8 @@ class TrxPbiLimitReportResource extends ModelResource implements HasImportExport
     protected string $sortColumn  = 'trx_date';
     protected int    $itemsPerPage = 25;
     protected bool   $usePagination = true;
+
+    protected ?PageType $redirectAfterSave = PageType::INDEX;
 
     protected function activeActions(): ListOf
     {
@@ -88,14 +91,11 @@ class TrxPbiLimitReportResource extends ModelResource implements HasImportExport
         ];
     }
 
-    protected function export(): ?Handler
+    protected function handlers(): ListOf
     {
-        return ExportHandler::make('Export Excel')
-            ->filename('trx_pbi_limit_' . date('Ymd-His'));
-    }
-
-    protected function import(): ?Handler
-    {
-        return null;
+        return new ListOf(Handler::class, [
+            ExportHandler::make('Export Excel')->alias('export-excel')->filename('trx_pbi_limit_' . date('Ymd-His')),
+            ExportHandler::make('Export CSV')->alias('export-csv')->csv()->filename('trx_pbi_limit_' . date('Ymd-His')),
+        ]);
     }
 }

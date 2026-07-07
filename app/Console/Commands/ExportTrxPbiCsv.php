@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\ReportSource;
 use App\Models\TrxPbiLimitReport;
 use App\Models\TrxPbiSettlementReport;
 use Carbon\Carbon;
@@ -26,7 +27,9 @@ class ExportTrxPbiCsv extends Command
 
         $this->info("Export TrxPBI CSV untuk: {$date->format('Y-m-d')}");
 
-        $dir = storage_path('app/exports/' . $date->format('Y-m-d'));
+        $base = env('TRX_PBI_EXPORT_PATH', storage_path('app/exports'));
+        $dir  = $base . DIRECTORY_SEPARATOR . $date->format('Y') . DIRECTORY_SEPARATOR . $date->format('m') . DIRECTORY_SEPARATOR . $date->format('d');
+
         if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
@@ -34,8 +37,12 @@ class ExportTrxPbiCsv extends Command
         $limitRows      = TrxPbiLimitReport::whereDate('trx_date', $date)->get();
         $settlementRows = TrxPbiSettlementReport::whereDate('trx_date', $date)->get();
 
+        $source   = ReportSource::where('service_name', 'trx_pbi_limit')->first();
+        $appId    = $source?->app_id ?? 'UNKNOWN';
+        $appName  = $source?->service_integrator ?? 'UNKNOWN';
+
         $rows     = $this->mapRows($limitRows)->merge($this->mapRows($settlementRows));
-        $filename = $dir . '/trx_pbi_' . $date->format('Ymd') . '.csv';
+        $filename = $dir . DIRECTORY_SEPARATOR . $date->format('Ymd') . '_BP_' . $appId . '_' . $appName . '.csv';
 
         (new FastExcel($rows))->configureCsv()->export($filename);
 

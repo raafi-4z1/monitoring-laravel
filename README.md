@@ -179,7 +179,14 @@ DB_PASSWORD=
 ES_HOST=https://192.168.0.1:88
 ES_USERNAME=app
 ES_PASSWORD=app
+
+# Folder tujuan export CSV TrxPBI (opsional, default: storage/app/exports)
+# Gunakan forward slash, termasuk untuk path Windows
+# TRX_PBI_EXPORT_PATH="C:/Users/username/OneDrive - BNI/exports/trx_pbi"
+TRX_PBI_EXPORT_PATH=
 ```
+
+> **Catatan path Windows:** Gunakan forward slash `/` atau double backslash `\\`. Backslash tunggal `\` akan menyebabkan error parsing `.env`.
 
 ### 4. Migrasi & Seed Database
 
@@ -259,7 +266,9 @@ Alur harian otomatis:
 | 00:11 | Fetch TrxPBI Settlement dari Elasticsearch |
 | ~00:11+ | **Auto export** TrxPBI (Limit + Settlement) kemarin ke CSV |
 
-File CSV disimpan di: `storage/app/exports/YYYY-MM-DD/trx_pbi_YYYYMMDD.csv`
+File CSV disimpan di: `{TRX_PBI_EXPORT_PATH}/YYYY/MM/DD/YYYYMMDD_BP_{app_id}_{service_integrator}.csv`
+
+Nilai `app_id` dan `service_integrator` diambil otomatis dari tabel `report_sources` (`service_name = 'trx_pbi_limit'`). Folder tahun dan bulan dibuat otomatis jika belum ada.
 
 ### Menjalankan Scheduler
 
@@ -351,7 +360,7 @@ Elasticsearch
                          │        └── Chart (Fragment async + withQueryParams)
                          │
                          └── Auto Export CSV (setelah fetch settlement selesai)
-                                  └── storage/app/exports/YYYY-MM-DD/trx_pbi_YYYYMMDD.csv
+                                  └── {TRX_PBI_EXPORT_PATH}/YYYY/MM/DD/YYYYMMDD_BP_{app_id}_{service_integrator}.csv
                               ├── ValueMetric  (Total Trx, Total Nominal)
                               ├── LineChart    (per jam per mata uang)
                               └── DonutChart   (distribusi per mata uang)

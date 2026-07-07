@@ -60,6 +60,11 @@ class TrxPbiSettlementReportResource extends ModelResource implements HasImportE
         ];
     }
 
+    protected function search(): array
+    {
+        return [];
+    }
+
     /**
      * @return list<class-string<PageContract>>
      */

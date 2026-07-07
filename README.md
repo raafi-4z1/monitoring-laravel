@@ -1,6 +1,6 @@
 # Monitoring Laravel
 
-Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang mengintegrasikan data dari **Elasticsearch** ke database MySQL, dilengkapi dengan dashboard, laporan per jam, scheduler otomatis, chart interaktif, dan export Excel.
+Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang mengintegrasikan data dari **Elasticsearch** ke database MySQL, dilengkapi dengan dashboard, laporan per jam, scheduler otomatis, chart interaktif, dan export Excel/CSV.
 
 ---
 
@@ -10,18 +10,21 @@ Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang menginteg
 - **mTeleplus Report** — laporan per jam mTeleplus dari Elasticsearch
 - **TrxPBI Limit Report** — laporan per jam transaksi WIC PBI Cek Limit (index `wic-trx-pbi-ceklimit*`), dikelompokkan per mata uang
 - **TrxPBI Settlement Report** — laporan per jam transaksi WIC PBI Settlement (index `log-wic-trx-pbi*`), dikelompokkan per mata uang
+- **WIC DB Metric** — laporan per jam metrik server WIC DB (`192.168.63.30` / WICADBDC): CPU, Memory, Disk dari index `xmb-ls*`
+- **WIC APP Metric** — laporan per jam metrik server WIC APP (`192.168.7.37` / HQWIC): CPU, Memory, Disk dari index `xmb-ls*`
 - **App Metrics** — input manual metrik server (CPU, Memory, Disk, dll.) dengan grafik per jenis metrik
 - **Master Aplikasi** — manajemen daftar nama aplikasi (CRUD + soft-delete, khusus Admin)
 - **Master Metrik** — manajemen daftar jenis metrik beserta satuan default (CRUD + soft-delete, khusus Admin)
 - **Report Sources** — konfigurasi metadata sumber data per layanan (app_id, data_source, data_source_name, service_integrator), khusus Admin
-- **Chart Interaktif** — LineChart & DonutChart via ApexCharts, dikelompokkan per mata uang / per jenis metrik, ikut filter DateRange
+- **Chart Interaktif** — LineChart & DonutChart via ApexCharts, dikelompokkan per mata uang / per jenis metrik, ikut filter DateRange & filter tipe metrik
 - **Reactive Form** — saat memilih metrik, kolom satuan otomatis terisi dari `satuan_default` master metrik
 - **Scheduler Otomatis** — fetch data dari Elasticsearch setiap hari otomatis
 - **Fetch Manual** — ambil data rentang tanggal tertentu langsung dari admin panel (maks 90 hari)
 - **Filter Tanggal** — filter data berdasarkan rentang tanggal dengan `DateRange`
 - **Pagination & Sort** — navigasi data dengan dropdown per page dan pengurutan kolom
 - **Export Excel & CSV** — export data ke file `.xlsx` atau `.csv` dengan format kolom lengkap termasuk metadata report_sources
-- **Auto Export CSV TrxPBI** — setelah fetch harian selesai, data TrxPBI Limit & Settlement kemarin diekspor otomatis ke satu file CSV di `storage/app/exports/`
+- **Auto Export CSV TrxPBI** — setelah fetch harian selesai, data TrxPBI Limit & Settlement kemarin diekspor otomatis ke satu file CSV
+- **Auto Export CSV WIC Metric** — setelah fetch WIC APP selesai, data WIC DB + WIC APP kemarin diekspor otomatis ke satu file CSV
 - **Role-based Access** — dua role panel: **Admin** (akses penuh termasuk manajemen user, role, dan master data) dan **User** (hanya akses laporan & app metrics)
 
 ---
@@ -37,107 +40,75 @@ monitoring-laravel/
 │   │       ├── FetchMteleplusReport.php
 │   │       ├── FetchTrxPbiLimitReport.php
 │   │       ├── FetchTrxPbiSettlementReport.php
-│   │       └── ExportTrxPbiCsv.php              # Export gabungan TrxPBI Limit+Settlement ke CSV
+│   │       ├── ExportTrxPbiCsv.php              # Export gabungan TrxPBI Limit+Settlement ke CSV
+│   │       ├── FetchWicMetricReport.php          # Fetch WIC DB Metric (WICADBDC)
+│   │       ├── FetchWicAppMetricReport.php       # Fetch WIC APP Metric (HQWIC)
+│   │       └── ExportWicMetricCsv.php            # Export gabungan WIC DB+APP ke CSV
 │   ├── Enums/
-│   │   └── MetricUnit.php                       # Enum satuan metrik (%, GB, MB/s, ms, dst.)
+│   │   └── MetricUnit.php
 │   ├── Models/
-│   │   ├── AppMetric.php                        # Relasi ke MasterAplikasi & MasterMetrik
-│   │   ├── MasterAplikasi.php                   # Soft-delete, nama auto-UPPERCASE
-│   │   ├── MasterMetrik.php                     # Soft-delete, nama auto-UPPERCASE
-│   │   ├── ReportSource.php                     # Metadata sumber data per layanan
+│   │   ├── AppMetric.php
+│   │   ├── MasterAplikasi.php
+│   │   ├── MasterMetrik.php
+│   │   ├── ReportSource.php
 │   │   ├── EngineNotifReport.php
 │   │   ├── MteleplusReport.php
-│   │   ├── TrxPbiLimitReport.php                # Per jam per mata uang, FK → report_sources
-│   │   └── TrxPbiSettlementReport.php           # Per jam per mata uang, FK → report_sources
+│   │   ├── TrxPbiLimitReport.php
+│   │   ├── TrxPbiSettlementReport.php
+│   │   ├── WicDbMetricReport.php                # Metrik WIC DB per jam per tipe (cpu/memory/disk)
+│   │   └── WicAppMetricReport.php               # Metrik WIC APP per jam per tipe (cpu/memory/disk)
 │   ├── MoonShine/
 │   │   ├── Layouts/
-│   │   │   └── MoonShineLayout.php              # Layout & menu (canSee per role)
+│   │   │   └── MoonShineLayout.php
 │   │   ├── Pages/
 │   │   │   └── Dashboard.php
 │   │   └── Resources/
 │   │       ├── AppMetric/
-│   │       │   ├── Pages/
-│   │       │   │   ├── AppMetricIndexPage.php   # Table + grafik + filter FK
-│   │       │   │   └── AppMetricFormPage.php    # Form + reactive satuan
-│   │       │   └── AppMetricResource.php
 │   │       ├── MasterAplikasi/
-│   │       │   ├── Pages/
-│   │       │   │   ├── MasterAplikasiIndexPage.php
-│   │       │   │   └── MasterAplikasiFormPage.php
-│   │       │   └── MasterAplikasiResource.php
 │   │       ├── MasterMetrik/
-│   │       │   ├── Pages/
-│   │       │   │   ├── MasterMetrikIndexPage.php
-│   │       │   │   └── MasterMetrikFormPage.php
-│   │       │   └── MasterMetrikResource.php
 │   │       ├── ReportSource/
-│   │       │   ├── Pages/
-│   │       │   │   ├── ReportSourceIndexPage.php
-│   │       │   │   └── ReportSourceFormPage.php
-│   │       │   └── ReportSourceResource.php
 │   │       ├── EngineNotifReport/
-│   │       │   ├── Pages/
-│   │       │   │   ├── EngineNotifReportIndexPage.php
-│   │       │   │   └── EngineNotifReportFetchPage.php
-│   │       │   └── EngineNotifReportResource.php
 │   │       ├── MteleplusReport/
-│   │       │   ├── Pages/
-│   │       │   │   ├── MteleplusReportIndexPage.php
-│   │       │   │   └── MteleplusReportFetchPage.php
-│   │       │   └── MteleplusReportResource.php
 │   │       ├── TrxPbiLimitReport/
-│   │       │   ├── Pages/
-│   │       │   │   ├── TrxPbiLimitReportIndexPage.php
-│   │       │   │   └── TrxPbiLimitReportFetchPage.php
-│   │       │   └── TrxPbiLimitReportResource.php
 │   │       ├── TrxPbiSettlementReport/
+│   │       ├── WicDbMetricReport/
 │   │       │   ├── Pages/
-│   │       │   │   ├── TrxPbiSettlementReportIndexPage.php
-│   │       │   │   └── TrxPbiSettlementReportFetchPage.php
-│   │       │   └── TrxPbiSettlementReportResource.php
+│   │       │   │   ├── WicDbMetricReportIndexPage.php  # Table + chart CPU/Memory/Disk
+│   │       │   │   └── WicDbMetricReportFetchPage.php
+│   │       │   └── WicDbMetricReportResource.php
+│   │       ├── WicAppMetricReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── WicAppMetricReportIndexPage.php # Table + chart CPU/Memory/Disk
+│   │       │   │   └── WicAppMetricReportFetchPage.php
+│   │       │   └── WicAppMetricReportResource.php
 │   │       ├── MoonShineUser/
-│   │       │   ├── Pages/
-│   │       │   │   ├── MoonShineUserFormPage.php
-│   │       │   │   └── MoonShineUserIndexPage.php
-│   │       │   └── MoonShineUserResource.php
 │   │       └── MoonShineUserRole/
-│   │           ├── Pages/
-│   │           │   ├── MoonShineUserRoleFormPage.php
-│   │           │   └── MoonShineUserRoleIndexPage.php
-│   │           └── MoonShineUserRoleResource.php
 │   ├── Providers/
 │   │   ├── AppServiceProvider.php
-│   │   └── MoonShineServiceProvider.php         # authorizationRules per resource
+│   │   └── MoonShineServiceProvider.php
 │   └── Services/
-│       ├── ElasticsearchService.php             # query & parse per index
+│       ├── ElasticsearchService.php             # query & parse per index (termasuk WIC Metric)
 │       ├── EngineNotifReportService.php
 │       ├── MteleplusReportService.php
 │       ├── TrxPbiLimitReportService.php
-│       └── TrxPbiSettlementReportService.php
+│       ├── TrxPbiSettlementReportService.php
+│       ├── WicDbMetricReportService.php         # HOST_IP=192.168.63.30, HOST_NAME=WICADBDC
+│       └── WicAppMetricReportService.php        # HOST_IP=192.168.7.37, HOST_NAME=HQWIC
 ├── config/
 │   └── elasticsearch.php
 ├── database/
 │   ├── migrations/
-│   │   ├── 0001_01_01_000000_create_users_table.php
-│   │   ├── 0001_01_01_000001_create_cache_table.php
-│   │   ├── 0001_01_01_000002_create_jobs_table.php
-│   │   ├── 2020_10_04_115514_create_moonshine_roles_table.php
-│   │   ├── 2020_10_05_173148_create_moonshine_tables.php
-│   │   ├── 2026_05_22_014556_create_notifications_table.php
-│   │   ├── 2026_05_26_033044_create_engine_notif_reports_table.php
-│   │   ├── 2026_06_04_140613_create_mteleplus_reports_table.php
-│   │   ├── 2026_06_09_000001_create_app_metrics_table.php
-│   │   ├── 2026_06_10_000001_add_role_and_avatar_to_users_table.php
-│   │   ├── 2026_06_12_000001_create_master_tables.php
-│   │   ├── 2026_07_03_000004_create_report_sources_table.php
-│   │   └── 2026_07_03_000006_create_trx_pbi_reports_table.php
+│   │   ├── ...
+│   │   ├── 2026_07_07_000001_create_wic_db_metric_reports_table.php
+│   │   ├── 2026_07_07_000002_create_wic_app_metric_reports_table.php
+│   │   └── 2026_07_07_000003_refactor_wic_metric_reports_datetime.php  # report_hour → trx_date + trx_hour
 │   └── seeders/
 │       ├── DatabaseSeeder.php
-│       ├── MasterMetrikSeeder.php               # 9 metrik default (CPU, MEMORY, DISK, dst.)
-│       └── ReportSourceSeeder.php               # Metadata sumber data TrxPBI Limit & Settlement
+│       ├── MasterMetrikSeeder.php
+│       └── ReportSourceSeeder.php               # +2 entry: wic_db_dc (id=3), wic_app_dc (id=4)
 └── routes/
-    ├── web.php                                  # Redirect / → /admin
-    └── console.php                              # Definisi scheduler
+    ├── web.php
+    └── console.php
 ```
 
 ---
@@ -181,9 +152,10 @@ ES_USERNAME=app
 ES_PASSWORD=app
 
 # Folder tujuan export CSV TrxPBI (opsional, default: storage/app/exports)
-# Gunakan forward slash, termasuk untuk path Windows
-# TRX_PBI_EXPORT_PATH="C:/Users/username/OneDrive - BNI/exports/trx_pbi"
 TRX_PBI_EXPORT_PATH=
+
+# Folder tujuan export CSV WIC Metric DB+APP (opsional, default: storage/app/exports)
+WIC_METRIC_EXPORT_PATH=
 ```
 
 > **Catatan path Windows:** Gunakan forward slash `/` atau double backslash `\\`. Backslash tunggal `\` akan menyebabkan error parsing `.env`.
@@ -196,7 +168,7 @@ php artisan migrate --seed
 
 Perintah `--seed` akan mengisi data awal:
 - **9 metrik default** (`MasterMetrikSeeder`): CPU, MEMORY, DISK, NETWORK_IN, NETWORK_OUT, LOAD_1M, LOAD_5M, LOAD_15M, RESPONSE_TIME
-- **2 report sources** (`ReportSourceSeeder`): metadata TrxPBI Limit & Settlement (app_id, data_source, data_source_name, service_integrator)
+- **4 report sources** (`ReportSourceSeeder`): TrxPBI Limit (id=1), TrxPBI Settlement (id=2), WIC DB (id=3), WIC APP (id=4)
 
 ### 5. Buat Admin Panel
 
@@ -214,7 +186,7 @@ php artisan serve
 
 Akses admin panel di: `http://127.0.0.1:8000/admin`
 
-> Root URL `/` otomatis redirect ke `/admin`, sehingga akses via IP langsung (mis. `https://192.168.1.50`) diarahkan ke halaman login panel.
+> Root URL `/` otomatis redirect ke `/admin`.
 
 ### Akses via LAN (HTTPS)
 
@@ -233,27 +205,21 @@ Untuk mengakses dari perangkat lain dalam satu jaringan menggunakan Laragon:
 Scheduler didefinisikan di `routes/console.php`:
 
 ```php
-Schedule::command('report:fetch-engine-notif')
-    ->dailyAt('00:05')
-    ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/engine-notif-fetch.log'));
+Schedule::command('report:fetch-engine-notif')->dailyAt('00:05')->withoutOverlapping();
+Schedule::command('report:fetch-mteleplus')->dailyAt('00:07')->withoutOverlapping();
+Schedule::command('report:fetch-trx-pbi-limit')->dailyAt('00:09')->withoutOverlapping();
 
-Schedule::command('report:fetch-mteleplus')
-    ->dailyAt('00:07')
-    ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/mteleplus-fetch.log'));
-
-Schedule::command('report:fetch-trx-pbi-limit')
-    ->dailyAt('00:09')
-    ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/trx-pbi-limit-fetch.log'));
-
-// Export CSV otomatis dipicu setelah fetch settlement (command terakhir) selesai
+// Auto export CSV TrxPBI setelah fetch settlement selesai
 Schedule::command('report:fetch-trx-pbi-settlement')
-    ->dailyAt('00:11')
-    ->withoutOverlapping()
-    ->then(fn () => Artisan::call('report:export-trx-pbi-csv'))
-    ->appendOutputTo(storage_path('logs/trx-pbi-settlement-fetch.log'));
+    ->dailyAt('00:11')->withoutOverlapping()
+    ->then(fn () => Artisan::call('report:export-trx-pbi-csv'));
+
+Schedule::command('report:fetch-wic-metric')->dailyAt('00:13')->withoutOverlapping();
+
+// Auto export CSV WIC Metric setelah fetch WIC APP selesai
+Schedule::command('report:fetch-wic-app-metric')
+    ->dailyAt('00:15')->withoutOverlapping()
+    ->then(fn () => Artisan::call('report:export-wic-metric-csv'));
 ```
 
 Alur harian otomatis:
@@ -263,24 +229,25 @@ Alur harian otomatis:
 | 00:05 | Fetch Engine Notif dari Elasticsearch |
 | 00:07 | Fetch mTeleplus dari Elasticsearch |
 | 00:09 | Fetch TrxPBI Limit dari Elasticsearch |
-| 00:11 | Fetch TrxPBI Settlement dari Elasticsearch |
-| ~00:11+ | **Auto export** TrxPBI (Limit + Settlement) kemarin ke CSV |
+| 00:11 | Fetch TrxPBI Settlement → **auto export** TrxPBI CSV |
+| 00:13 | Fetch WIC DB Metric (WICADBDC) dari Elasticsearch |
+| 00:15 | Fetch WIC APP Metric (HQWIC) → **auto export** WIC Metric CSV |
 
-File CSV disimpan di: `{TRX_PBI_EXPORT_PATH}/YYYY/MM/DD/YYYYMMDD_BP_{app_id}_{service_integrator}.csv`
+File CSV disimpan di:
+- TrxPBI: `{TRX_PBI_EXPORT_PATH}/YYYY/MM/DD/YYYYMMDD_{kode_prefix}_{app_id}_{service_integrator}.csv`
+- WIC Metric: `{WIC_METRIC_EXPORT_PATH}/YYYY/MM/DD/YYYYMMDD_{kode_prefix}_{app_id}_WIC.csv`
 
-Nilai `app_id` dan `service_integrator` diambil otomatis dari tabel `report_sources` (`service_name = 'trx_pbi_limit'`). Folder tahun dan bulan dibuat otomatis jika belum ada.
+Nilai `kode_prefix` diambil dari kolom `kode_prefix` tabel `report_sources` (default: `BP` untuk TrxPBI, `SPI` untuk WIC Metric).
 
 ### Menjalankan Scheduler
 
-**Development — Terminal (polling tiap menit, biarkan berjalan):**
+**Development — Terminal (polling tiap menit):**
 
 ```bash
 php artisan schedule:work
 ```
 
 **Windows — Windows Task Scheduler:**
-
-Web server (Apache/Nginx Laragon) **tidak perlu aktif** — scheduler berjalan via PHP CLI. Yang harus jalan hanyalah **MySQL**.
 
 ```
 Program  : C:\laragon\bin\php\php-8.2\php.exe
@@ -289,8 +256,6 @@ Start in : C:\path\to\monitoring-laravel
 Trigger  : Daily, 00:00
 Repeat   : Every 1 minute, for a duration of 30 minutes
 ```
-
-> Durasi 30 menit (00:00–00:30) sudah mencakup semua jadwal yang berakhir sekitar 00:11. Setelah itu task scheduler berhenti otomatis hingga tengah malam berikutnya.
 
 **Production (Linux) — Crontab:**
 
@@ -303,31 +268,23 @@ Repeat   : Every 1 minute, for a duration of 30 minutes
 ## Artisan Commands
 
 ```bash
-# Fetch Engine Notif kemarin dari Elasticsearch
+# Fetch data kemarin dari Elasticsearch
 php artisan report:fetch-engine-notif
-
-# Fetch mTeleplus kemarin dari Elasticsearch
 php artisan report:fetch-mteleplus
-
-# Fetch TrxPBI Limit kemarin dari Elasticsearch
 php artisan report:fetch-trx-pbi-limit
-
-# Fetch TrxPBI Settlement kemarin dari Elasticsearch
 php artisan report:fetch-trx-pbi-settlement
+php artisan report:fetch-wic-metric          # WIC DB (WICADBDC)
+php artisan report:fetch-wic-app-metric      # WIC APP (HQWIC)
 
-# Export TrxPBI Limit + Settlement kemarin ke satu file CSV
-php artisan report:export-trx-pbi-csv
+# Export CSV
+php artisan report:export-trx-pbi-csv                      # TrxPBI kemarin
+php artisan report:export-trx-pbi-csv --date=2026-07-05    # TrxPBI tanggal tertentu
+php artisan report:export-wic-metric-csv                   # WIC Metric kemarin
+php artisan report:export-wic-metric-csv --date=2026-07-05 # WIC Metric tanggal tertentu
 
-# Export TrxPBI untuk tanggal tertentu
-php artisan report:export-trx-pbi-csv --date=2026-07-05
-
-# Jalankan scheduler manual
+# Utilitas
 php artisan schedule:run
-
-# Lihat semua scheduled jobs
 php artisan schedule:list
-
-# Clear cache
 php artisan optimize:clear
 ```
 
@@ -336,34 +293,27 @@ php artisan optimize:clear
 ## Alur Data
 
 ```
-Elasticsearch
+Elasticsearch (index: xmb-ls*, wic-trx-pbi-ceklimit*, log-wic-trx-pbi*, ...)
      │
-     ├── Otomatis: scheduler harian
-     │       ├── 00:05 → report:fetch-engine-notif
-     │       ├── 00:07 → report:fetch-mteleplus
-     │       ├── 00:09 → report:fetch-trx-pbi-limit
-     │       └── 00:11 → report:fetch-trx-pbi-settlement
-     │
+     ├── Otomatis: scheduler harian (lihat tabel Scheduler di atas)
      └── Manual: dari panel (form fetch per rentang tanggal, maks 90 hari)
                │
                ▼
      Service::fetchAndStore(Carbon $date)
                │
-               ├── ElasticsearchService::query...()     ← agregasi per jam per mata uang
-               └── Model::updateOrCreate()              ← upsert unique key (trx_date, trx_hour, trx_currency)
+               ├── ElasticsearchService::query...()
+               └── Model::updateOrCreate()
                          │
                          ▼
                Database MySQL
                          │
                          ├── MoonShine Panel
                          │        ├── Table (filter, sort, pagination, export Excel/CSV)
-                         │        └── Chart (Fragment async + withQueryParams)
+                         │        └── Chart (Fragment async + filter tipe metrik)
                          │
-                         └── Auto Export CSV (setelah fetch settlement selesai)
-                                  └── {TRX_PBI_EXPORT_PATH}/YYYY/MM/DD/YYYYMMDD_BP_{app_id}_{service_integrator}.csv
-                              ├── ValueMetric  (Total Trx, Total Nominal)
-                              ├── LineChart    (per jam per mata uang)
-                              └── DonutChart   (distribusi per mata uang)
+                         └── Auto Export CSV
+                                  ├── TrxPBI → {TRX_PBI_EXPORT_PATH}/YYYY/MM/DD/...csv
+                                  └── WIC Metric → {WIC_METRIC_EXPORT_PATH}/YYYY/MM/DD/...csv
 ```
 
 ---
@@ -372,132 +322,64 @@ Elasticsearch
 
 ### `report_sources`
 
-> Metadata sumber data per layanan — digunakan untuk kolom export Excel TrxPBI.
-
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | `id` | bigint | Primary key |
-| `service_name` | varchar(50) | Identifier layanan — unique (mis. `trx_pbi_limit`) |
-| `app_id` | varchar(50) | ID aplikasi (mis. `AFOAFO0252`) |
-| `data_source` | varchar(50) | Jenis sumber data (`ELK`, `Dynatrace`, `DBMS`) |
-| `data_source_name` | varchar(100) | Nama index/sumber (mis. `wic-trx-pbi-ceklimit*`) |
-| `service_integrator` | varchar(50) | Nama integrator (mis. `WIC`) |
-| `created_at` | timestamp | — |
-| `updated_at` | timestamp | — |
+| `service_name` | varchar(50) | Identifier layanan — unique |
+| `app_id` | varchar(50) | ID aplikasi |
+| `data_source` | varchar(50) | Jenis sumber data (`ELK`, dll.) |
+| `data_source_name` | varchar(100) | Nama index/sumber |
+| `service_integrator` | varchar(50) | Nama integrator |
 
-### `master_aplikasi`
+### `trx_pbi_limit_reports` / `trx_pbi_settlement_reports`
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
-| `id` | bigint | Primary key |
-| `nama` | varchar | Nama aplikasi — unique, auto-UPPERCASE |
-| `keterangan` | varchar | Keterangan opsional |
-| `deleted_at` | timestamp | Soft-delete |
-| `created_at` | timestamp | — |
-| `updated_at` | timestamp | — |
+| `report_source_id` | bigint | FK → `report_sources.id` |
+| `trx_date` | date | Tanggal transaksi |
+| `trx_hour` | tinyint unsigned | Jam (0–23) |
+| `trx_currency` | varchar(10) | Kode mata uang |
+| `trx_count` | bigint | Jumlah transaksi |
+| `success_count` | bigint | Jumlah sukses |
+| `trx_amount` | decimal(20,2) | Total nominal |
 
-### `master_metrik`
+**Unique key:** `(trx_date, trx_hour, trx_currency)`
+
+### `wic_db_metric_reports` / `wic_app_metric_reports`
+
+> WIC DB: host `192.168.63.30` (WICADBDC, `report_source_id=3`)  
+> WIC APP: host `192.168.7.37` (HQWIC, `report_source_id=4`)  
+> Sumber: Elasticsearch index `xmb-ls*`, metricset `system.cpu`, `system.memory`, `system.filesystem`
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
-| `id` | bigint | Primary key |
-| `nama` | varchar | Nama metrik — unique, auto-UPPERCASE |
-| `satuan_default` | varchar | Satuan default (%, GB, MB/s, ms, dst.) |
-| `keterangan` | varchar | Keterangan opsional |
-| `deleted_at` | timestamp | Soft-delete |
-| `created_at` | timestamp | — |
-| `updated_at` | timestamp | — |
+| `report_source_id` | bigint | FK → `report_sources.id` |
+| `trx_date` | date | Tanggal laporan |
+| `trx_hour` | tinyint unsigned | Jam (0–23) |
+| `metric_type` | varchar(20) | `cpu` / `memory` / `disk` |
+| `disk_path` | varchar(100) | Nama drive (mis. `C`, `D`) — kosong untuk cpu/memory |
+| `max_pct` | decimal(8,4) | Nilai maksimum dalam jam (0–1) — cpu/memory |
+| `min_pct` | decimal(8,4) | Nilai minimum dalam jam (0–1) — cpu/memory |
+| `avg_pct` | decimal(8,4) | Nilai rata-rata dalam jam (0–1) — cpu/memory |
+| `last_pct` | decimal(8,4) | Nilai terakhir dalam jam (0–1) — disk |
+| `last_used_bytes` | bigint | Bytes terpakai — disk |
+| `last_total_bytes` | bigint | Total kapasitas bytes — disk |
+
+**Unique key:** `(trx_date, trx_hour, metric_type, disk_path)`
+
+**Export kolom:** `app_id, data_source, data_source_name, trx_date, trx_hour, hostname, role_type, utilization_avg_pct, utilization_min_pct, utilization_max_pct`
+
+### `engine_notif_reports` / `mteleplus_reports`
+
+> Disimpan per jam, unique key: `report_hour` (datetime).
+
+### `master_aplikasi` / `master_metrik`
+
+> CRUD dengan soft-delete. Nama auto-UPPERCASE.
 
 ### `app_metrics`
 
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | bigint | Primary key |
-| `recorded_at` | timestamp(6) | Waktu pencatatan — microsecond precision, auto-fill detik |
-| `value` | varchar | Nilai metrik (mis. `75`, `2.4`) |
-| `satuan` | varchar | Satuan metrik |
-| `master_aplikasi_id` | bigint | FK → `master_aplikasi.id` |
-| `master_metrik_id` | bigint | FK → `master_metrik.id` |
-| `created_at` | timestamp | — |
-| `updated_at` | timestamp | — |
-
-### `engine_notif_reports`
-
-> Data diambil dari Elasticsearch, disimpan per jam.
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | bigint | Primary key |
-| `report_hour` | datetime | Jam laporan (WIB, dibulatkan ke awal jam) — unique |
-| `mvrk_success` | bigint | MVRK berhasil |
-| `mvrk_fail` | bigint | MVRK gagal |
-| `sms_success` | bigint | SMS berhasil |
-| `sms_fail` | bigint | SMS gagal |
-| `email_success` | bigint | Email berhasil |
-| `email_fail` | bigint | Email gagal |
-| `avg_response_time` | decimal(10,2) | Rata-rata response time |
-| `avg_lifespan` | decimal(10,2) | Rata-rata lifespan |
-| `created_at` | timestamp | — |
-| `updated_at` | timestamp | — |
-
-### `mteleplus_reports`
-
-> Data diambil dari Elasticsearch, disimpan per jam.
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | bigint | Primary key |
-| `report_hour` | datetime | Jam laporan (WIB, dibulatkan ke awal jam) — unique |
-| `akt_success` | bigint | AKT berhasil |
-| `akt_fail` | bigint | AKT gagal |
-| `rpin_success` | bigint | RPIN berhasil |
-| `rpin_fail` | bigint | RPIN gagal |
-| `total_incoming` | bigint | Total incoming |
-| `total_outgoing` | bigint | Total outgoing |
-| `created_at` | timestamp | — |
-| `updated_at` | timestamp | — |
-
-### `trx_pbi_limit_reports`
-
-> Data diambil dari index Elasticsearch **`wic-trx-pbi-ceklimit*`**, field waktu: `RequestTime` (UTC → WIB +07:00).
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | bigint | Primary key |
-| `report_source_id` | bigint | FK → `report_sources.id` (nullable) |
-| `trx_date` | date | Tanggal transaksi |
-| `trx_hour` | tinyint unsigned | Jam transaksi (0–23) |
-| `trx_currency` | varchar(10) | Kode mata uang (mis. `USD`, `SGD`) |
-| `trx_count` | bigint | Jumlah transaksi |
-| `success_count` | bigint | Jumlah transaksi sukses |
-| `trx_amount` | decimal(20,2) | Total nominal transaksi |
-| `created_at` | timestamp | — |
-| `updated_at` | timestamp | — |
-
-**Unique key:** `(trx_date, trx_hour, trx_currency)`
-
-**Export kolom (Excel & CSV):** `app_id, data_source, data_source_name, trx_date, trx_hour, service_name, service_integrator, trx_currency, trx_amount, trx_count, success_count`
-
-### `trx_pbi_settlement_reports`
-
-> Data diambil dari index Elasticsearch **`log-wic-trx-pbi*`**, field waktu: `DateTime` (UTC → WIB +07:00).
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | bigint | Primary key |
-| `report_source_id` | bigint | FK → `report_sources.id` (nullable) |
-| `trx_date` | date | Tanggal transaksi |
-| `trx_hour` | tinyint unsigned | Jam transaksi (0–23) |
-| `trx_currency` | varchar(10) | Kode mata uang (mis. `USD`, `SGD`) |
-| `trx_count` | bigint | Jumlah transaksi |
-| `success_count` | bigint | Jumlah transaksi sukses |
-| `trx_amount` | decimal(20,2) | Total nominal transaksi |
-| `created_at` | timestamp | — |
-| `updated_at` | timestamp | — |
-
-**Unique key:** `(trx_date, trx_hour, trx_currency)`
-
-**Export kolom (Excel & CSV):** `app_id, data_source, data_source_name, trx_date, trx_hour, service_name, service_integrator, trx_currency, trx_amount, trx_count, success_count`
+> Input manual. FK ke `master_aplikasi` dan `master_metrik`.
 
 ---
 
@@ -505,32 +387,12 @@ Elasticsearch
 
 | Role | Menu yang Terlihat |
 |---|---|
-| **Admin** | Manajemen (Users, Roles) + App Metric (Data Metrik, Master Aplikasi, Master Metrik, Report Sources) + Elastic |
-| **User** | App Metric (Data Metrik saja) + Elastic |
-
-- Admin dibuat via `php artisan moonshine:user`
-- User tambahan dibuat dari **Manajemen → Admins** di panel
-- Akses ke resource Master Aplikasi/Metrik, Report Sources, dan Manajemen User/Role diblokir secara server-side untuk role User
+| **Admin** | Manajemen (Users, Roles) + App Metric + Elastic + WIC Metric |
+| **User** | App Metric (Data Metrik saja) + Elastic + WIC Metric |
 
 ---
 
 ## Halaman Admin Panel
-
-### Menu: Manajemen (khusus Admin)
-
-**Admins** — CRUD panel users (nama, email, password, role)
-
-**User Roles** — CRUD definisi role; default: Admin (id=1), User (id=2)
-
-### Menu: App Metric
-
-**Data Metrik** — tabel metrik dengan filter DateRange, dropdown Aplikasi & Metrik, grafik LineChart per jenis metrik
-
-**Master Aplikasi** (khusus Admin) — CRUD daftar nama aplikasi; soft-delete dengan tab Sampah & tombol Pulihkan
-
-**Master Metrik** (khusus Admin) — CRUD jenis metrik + satuan default; soft-delete dengan tab Sampah & tombol Pulihkan
-
-**Report Sources** (khusus Admin) — CRUD metadata sumber data per layanan; digunakan untuk mengisi kolom export Excel TrxPBI
 
 ### Menu: Elastic
 
@@ -538,9 +400,15 @@ Elasticsearch
 
 **Mteleplus Reports** — tabel per jam, chart, fetch manual, export Excel & CSV
 
-**TrxPBI Limit** — tabel per jam per mata uang, chart interaktif (ValueMetric + LineChart + DonutChart), fetch manual, export Excel & CSV dengan kolom report_sources
+**TrxPBI Limit** — tabel per jam per mata uang, chart (ValueMetric + LineChart + DonutChart), fetch manual, export
 
-**TrxPBI Settlement** — tabel per jam per mata uang, chart interaktif (ValueMetric + LineChart + DonutChart), fetch manual, export Excel & CSV dengan kolom report_sources
+**TrxPBI Settlement** — tabel per jam per mata uang, chart (ValueMetric + LineChart + DonutChart), fetch manual, export
+
+### Menu: WIC Metric
+
+**WIC DB (WICADBDC)** — metrik server WIC DB per jam; chart CPU (Max/Avg/Min %), Memory (Max/Avg/Min %), Disk Usage (% semua disk dalam satu chart); filter tipe metrik; export Excel & CSV
+
+**WIC APP (HQWIC)** — identik dengan WIC DB namun data dari host HQWIC
 
 ---
 
@@ -552,6 +420,7 @@ Elasticsearch
     "laravel/framework": "^12.0",
     "moonshine/moonshine": "^4.13",
     "moonshine/apexcharts": "^3.1",
-    "moonshine/import-export": "2.0.0"
+    "moonshine/import-export": "2.0.0",
+    "rap2hpoutre/fast-excel": "^2.0"
 }
 ```

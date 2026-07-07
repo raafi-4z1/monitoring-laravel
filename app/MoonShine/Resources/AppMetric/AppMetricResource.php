@@ -49,6 +49,11 @@ class AppMetricResource extends ModelResource
         ];
     }
 
+    protected function search(): array
+    {
+        return [];
+    }
+
     /**
      * @return list<class-string<PageContract>>
      */

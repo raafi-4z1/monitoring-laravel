@@ -66,6 +66,11 @@ class MteleplusReportResource extends ModelResource implements HasImportExportCo
         ];
     }
     
+    protected function search(): array
+    {
+        return [];
+    }
+
     /**
      * @return list<class-string<PageContract>>
      */

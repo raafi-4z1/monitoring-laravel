@@ -60,6 +60,11 @@ class TrxPbiLimitReportResource extends ModelResource implements HasImportExport
         ];
     }
 
+    protected function search(): array
+    {
+        return [];
+    }
+
     /**
      * @return list<class-string<PageContract>>
      */

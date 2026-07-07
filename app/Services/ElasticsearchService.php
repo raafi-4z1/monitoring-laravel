@@ -23,7 +23,18 @@ class ElasticsearchService
             ->withoutVerifying()
             ->post("{$this->host}/{$index}/_search", $body);
 
-        return $response->json() ?? [];
+        $json = $response->json() ?? [];
+
+        if (!empty($json['error'])) {
+            $caused = $json['error']['failed_shards'][0]['reason'] ?? $json['error']['caused_by'] ?? null;
+            \Illuminate\Support\Facades\Log::error("ES search error [{$index}]", [
+                'status'    => $json['status'] ?? $response->status(),
+                'reason'    => $json['error']['reason'] ?? null,
+                'caused_by' => $caused ? ($caused['reason'] ?? json_encode($caused)) : null,
+            ]);
+        }
+
+        return $json;
     }
 
     // ✅ Query By Sending Type dari enginenotif-ttrx-* per jam (WIB +07:00)
@@ -363,6 +374,183 @@ class ElasticsearchService
                     'trx_count'    => $ccyBucket['doc_count'],
                     'trx_amount'   => $ccyBucket['trx_amount']['value'] ?? 0,
                 ];
+            }
+        }
+
+        return $parsed;
+    }
+
+    // ✅ Query WIC Metric CPU dari xmb-ls* per jam per host (WIB +07:00)
+    public function queryWicMetricCpu(string $hostIp, string $dateFrom, string $dateTo, string $hostHostname = ''): array
+    {
+        return $this->search('xmb-ls*', [
+            'size'  => 0,
+            'query' => [
+                'bool' => [
+                    'filter' => [
+                        ['term'  => ['host.ip'        => $hostIp]],
+                        ['term'  => ['metricset.name' => 'cpu']],
+                        ['range' => ['@timestamp'     => ['gte' => $dateFrom . 'T00:00:00.000', 'lte' => $dateTo . 'T23:59:59.999', 'time_zone' => '+07:00']]],
+                    ],
+                ],
+            ],
+            'aggs' => [
+                'per_hour' => [
+                    'date_histogram' => ['field' => '@timestamp', 'calendar_interval' => '1h', 'format' => 'yyyy-MM-dd HH:mm', 'time_zone' => '+07:00', 'min_doc_count' => 1],
+                    'aggs' => [
+                        'max_pct' => ['max' => ['field' => 'system.cpu.total.norm.pct']],
+                        'min_pct' => ['min' => ['field' => 'system.cpu.total.norm.pct']],
+                        'avg_pct' => ['avg' => ['field' => 'system.cpu.total.norm.pct']],
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    // ✅ Query WIC Metric Memory dari xmb-ls* per jam per host (WIB +07:00)
+    public function queryWicMetricMemory(string $hostIp, string $dateFrom, string $dateTo, string $hostHostname = ''): array
+    {
+        return $this->search('xmb-ls*', [
+            'size'  => 0,
+            'query' => [
+                'bool' => [
+                    'filter' => [
+                        ['term'  => ['host.ip'        => $hostIp]],
+                        ['term'  => ['metricset.name' => 'memory']],
+                        ['range' => ['@timestamp'     => ['gte' => $dateFrom . 'T00:00:00.000', 'lte' => $dateTo . 'T23:59:59.999', 'time_zone' => '+07:00']]],
+                    ],
+                ],
+            ],
+            'aggs' => [
+                'per_hour' => [
+                    'date_histogram' => ['field' => '@timestamp', 'calendar_interval' => '1h', 'format' => 'yyyy-MM-dd HH:mm', 'time_zone' => '+07:00', 'min_doc_count' => 1],
+                    'aggs' => [
+                        'max_pct' => ['max' => ['field' => 'system.memory.actual.used.pct']],
+                        'min_pct' => ['min' => ['field' => 'system.memory.actual.used.pct']],
+                        'avg_pct' => ['avg' => ['field' => 'system.memory.actual.used.pct']],
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    // ✅ Query WIC Metric Disk/Filesystem dari xmb-ls* per jam per host (WIB +07:00)
+    public function queryWicMetricDisk(string $hostIp, string $dateFrom, string $dateTo, string $hostHostname = ''): array
+    {
+        return $this->search('xmb-ls*', [
+            'size'  => 0,
+            'query' => [
+                'bool' => [
+                    'filter' => [
+                        ['term'  => ['host.ip'        => $hostIp]],
+                        ['term'  => ['metricset.name' => 'filesystem']],
+                        ['range' => ['@timestamp'     => ['gte' => $dateFrom . 'T00:00:00.000', 'lte' => $dateTo . 'T23:59:59.999', 'time_zone' => '+07:00']]],
+                    ],
+                ],
+            ],
+            'aggs' => [
+                'per_hour' => [
+                    'date_histogram' => ['field' => '@timestamp', 'calendar_interval' => '1h', 'format' => 'yyyy-MM-dd HH:mm', 'time_zone' => '+07:00', 'min_doc_count' => 1],
+                    'aggs' => [
+                        'by_disk' => [
+                            // mount_point dipetakan sebagai text di index ini — harus pakai .keyword
+                            'terms' => ['field' => 'system.filesystem.mount_point.keyword', 'size' => 20],
+                            'aggs'  => [
+                                'last_doc' => [
+                                    'top_hits' => [
+                                        'size' => 1,
+                                        'sort' => [['@timestamp' => ['order' => 'desc']]],
+                                        // _source tidak dibatasi agar semua field tersedia
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    public function parseWicMetricCpuMemory(array $result): array
+    {
+        $buckets = $result['aggregations']['per_hour']['buckets'] ?? [];
+        $parsed  = [];
+
+        foreach ($buckets as $b) {
+            $hour   = $b['key_as_string'];
+            $maxPct = $b['max_pct']['value'] ?? null;
+            $minPct = $b['min_pct']['value'] ?? null;
+            $avgPct = $b['avg_pct']['value'] ?? null;
+
+            if ($maxPct === null && $minPct === null && $avgPct === null) {
+                \Illuminate\Support\Facades\Log::warning("WicMetric [cpu/memory]: semua nilai null untuk jam {$hour}, bucket dilewati.", [
+                    'doc_count' => $b['doc_count'] ?? 0,
+                ]);
+                continue;
+            }
+
+            $parsed[$hour] = [
+                'max_pct' => $maxPct,
+                'min_pct' => $minPct,
+                'avg_pct' => $avgPct,
+            ];
+        }
+
+        return $parsed;
+    }
+
+    public function parseWicMetricDisk(array $result): array
+    {
+        $buckets = $result['aggregations']['per_hour']['buckets'] ?? [];
+        $parsed  = [];
+
+        $totalHits = $result['hits']['total']['value'] ?? $result['hits']['total'] ?? 'unknown';
+        \Illuminate\Support\Facades\Log::debug('WicMetric [disk] parse', [
+            'total_hits'   => $totalHits,
+            'hour_buckets' => count($buckets),
+            'agg_keys'     => array_keys($result['aggregations'] ?? []),
+        ]);
+
+        foreach ($buckets as $b) {
+            $hour          = $b['key_as_string'];
+            $parsed[$hour] = [];
+
+            foreach ($b['by_disk']['buckets'] ?? [] as $diskBucket) {
+                $hit      = $diskBucket['last_doc']['hits']['hits'][0] ?? null;
+                $src      = $hit['_source'] ?? [];
+                $diskPath = $diskBucket['key'];
+
+                // Log sample source keys agar bisa diverifikasi field path-nya
+                if (empty($parsed)) {
+                    \Illuminate\Support\Facades\Log::debug("WicMetric [disk] sample source keys untuk '{$diskPath}' jam {$hour}", [
+                        'doc_id'      => $hit['_id'] ?? null,
+                        'source_keys' => array_keys($src),
+                        'system_keys' => isset($src['system']) ? array_keys((array) $src['system']) : 'not_nested',
+                    ]);
+                }
+
+                $lastPct        = \Illuminate\Support\Arr::get($src, 'system.filesystem.used.pct');
+                $lastUsedBytes  = \Illuminate\Support\Arr::get($src, 'system.filesystem.used.bytes');
+                $lastTotalBytes = \Illuminate\Support\Arr::get($src, 'system.filesystem.total');
+
+                if ($lastPct === null) {
+                    \Illuminate\Support\Facades\Log::warning("WicMetric [disk]: last_pct null untuk disk '{$diskPath}' jam {$hour}, dilewati.", [
+                        'doc_id' => $hit['_id'] ?? null,
+                        'src_empty' => empty($src),
+                    ]);
+                    continue;
+                }
+
+                $parsed[$hour][] = [
+                    'disk_path'        => $diskPath,
+                    'last_pct'         => $lastPct,
+                    'last_used_bytes'  => $lastUsedBytes,
+                    'last_total_bytes' => $lastTotalBytes,
+                ];
+            }
+
+            if (empty($parsed[$hour])) {
+                unset($parsed[$hour]);
             }
         }
 

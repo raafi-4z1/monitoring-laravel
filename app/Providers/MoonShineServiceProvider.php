@@ -18,6 +18,10 @@ use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
 use App\MoonShine\Resources\TrxPbiLimitReport\Pages\TrxPbiLimitReportFetchPage;
 use App\MoonShine\Resources\TrxPbiSettlementReport\TrxPbiSettlementReportResource;
 use App\MoonShine\Resources\TrxPbiSettlementReport\Pages\TrxPbiSettlementReportFetchPage;
+use App\MoonShine\Resources\WicDbMetricReport\WicDbMetricReportResource;
+use App\MoonShine\Resources\WicDbMetricReport\Pages\WicDbMetricReportFetchPage;
+use App\MoonShine\Resources\WicAppMetricReport\WicAppMetricReportResource;
+use App\MoonShine\Resources\WicAppMetricReport\Pages\WicAppMetricReportFetchPage;
 use Illuminate\Support\ServiceProvider;
 use MoonShine\Contracts\Core\DependencyInjection\CoreContract;
 use MoonShine\Laravel\DependencyInjection\MoonShineConfigurator;
@@ -53,6 +57,8 @@ class MoonShineServiceProvider extends ServiceProvider
                 TrxPbiSettlementReportResource::class,
                 AppMetricResource::class,
                 ReportSourceResource::class,
+                WicDbMetricReportResource::class,
+                WicAppMetricReportResource::class,
             ])
             ->pages([
                 ...$core->getConfig()->getPages(),
@@ -60,6 +66,8 @@ class MoonShineServiceProvider extends ServiceProvider
                 MteleplusReportFetchPage::class,
                 TrxPbiLimitReportFetchPage::class,
                 TrxPbiSettlementReportFetchPage::class,
+                WicDbMetricReportFetchPage::class,
+                WicAppMetricReportFetchPage::class,
             ]);
 
         $core->getConfig()->authorizationRules(

@@ -17,6 +17,7 @@ class ReportSourceSeeder extends Seeder
                     'data_source'        => 'ELK',
                     'data_source_name'   => 'wic-trx-pbi-ceklimit*',
                     'service_integrator' => 'WIC',
+                    'kode_prefix'        => 'BP',
                     'created_at'         => now(),
                     'updated_at'         => now(),
                 ],
@@ -26,12 +27,33 @@ class ReportSourceSeeder extends Seeder
                     'data_source'        => 'ELK',
                     'data_source_name'   => 'log-wic-trx-pbi*',
                     'service_integrator' => 'WIC',
+                    'kode_prefix'        => 'BP',
+                    'created_at'         => now(),
+                    'updated_at'         => now(),
+                ],
+                [
+                    'service_name'       => 'wic_db_dc',
+                    'app_id'             => 'WIC',
+                    'data_source'        => 'ELK',
+                    'data_source_name'   => 'xmb-ls*',
+                    'service_integrator' => 'WICADBDC',
+                    'kode_prefix'        => 'SPI',
+                    'created_at'         => now(),
+                    'updated_at'         => now(),
+                ],
+                [
+                    'service_name'       => 'wic_app_dc',
+                    'app_id'             => 'WIC',
+                    'data_source'        => 'ELK',
+                    'data_source_name'   => 'xmb-ls*',
+                    'service_integrator' => 'HQWIC',
+                    'kode_prefix'        => 'SPI',
                     'created_at'         => now(),
                     'updated_at'         => now(),
                 ],
             ],
             ['service_name'],
-            ['app_id', 'data_source', 'data_source_name', 'service_integrator', 'updated_at']
+            ['app_id', 'data_source', 'data_source_name', 'service_integrator', 'kode_prefix', 'updated_at']
         );
     }
 }

@@ -24,3 +24,15 @@ Schedule::command('report:fetch-trx-pbi-settlement')
     ->withoutOverlapping()
     ->then(fn () => Artisan::call('report:export-trx-pbi-csv'))
     ->appendOutputTo(storage_path('logs/trx-pbi-settlement-fetch.log'));
+
+Schedule::command('report:fetch-wic-metric')
+    ->dailyAt('00:13')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/wic-metric-fetch.log'));
+
+// then() memicu export CSV setelah fetch WIC APP (command terakhir) selesai
+Schedule::command('report:fetch-wic-app-metric')
+    ->dailyAt('00:15')
+    ->withoutOverlapping()
+    ->then(fn () => Artisan::call('report:export-wic-metric-csv'))
+    ->appendOutputTo(storage_path('logs/wic-app-metric-fetch.log'));

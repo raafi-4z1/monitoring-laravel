@@ -38,11 +38,12 @@ class ExportTrxPbiCsv extends Command
         $settlementRows = TrxPbiSettlementReport::whereDate('trx_date', $date)->get();
 
         $source   = ReportSource::where('service_name', 'trx_pbi_limit')->first();
+        $prefix   = $source?->kode_prefix ?? 'BP';
         $appId    = $source?->app_id ?? 'UNKNOWN';
         $appName  = $source?->service_integrator ?? 'UNKNOWN';
 
         $rows     = $this->mapRows($limitRows)->merge($this->mapRows($settlementRows));
-        $filename = $dir . DIRECTORY_SEPARATOR . $date->format('Ymd') . '_BP_' . $appId . '_' . $appName . '.csv';
+        $filename = $dir . DIRECTORY_SEPARATOR . $date->format('Ymd') . "_{$prefix}_{$appId}_{$appName}.csv";
 
         (new FastExcel($rows))->configureCsv()->export($filename);
 

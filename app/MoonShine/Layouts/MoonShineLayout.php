@@ -14,6 +14,8 @@ use App\MoonShine\Resources\MoonShineUserRole\MoonShineUserRoleResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
 use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
 use App\MoonShine\Resources\TrxPbiSettlementReport\TrxPbiSettlementReportResource;
+use App\MoonShine\Resources\WicAppMetricReport\WicAppMetricReportResource;
+use App\MoonShine\Resources\WicDbMetricReport\WicDbMetricReportResource;
 use MoonShine\ColorManager\ColorManager;
 use MoonShine\ColorManager\Palettes\PurplePalette;
 use MoonShine\Contracts\ColorManager\ColorManagerContract;
@@ -71,6 +73,14 @@ final class MoonShineLayout extends AppLayout
                 MenuItem::make(TrxPbiSettlementReportResource::class, 'TrxPBI Settlement')
                     ->icon('banknotes'),
             ])->icon('circle-stack'),
+
+            // WIC Metric — semua role
+            MenuGroup::make('WIC Metric', [
+                MenuItem::make(WicDbMetricReportResource::class, 'WIC DB (WICADBDC)')
+                    ->icon('server-stack'),
+                MenuItem::make(WicAppMetricReportResource::class, 'WIC APP (HQWIC)')
+                    ->icon('computer-desktop'),
+            ])->icon('cpu-chip'),
         ];
     }
 

@@ -45,6 +45,11 @@ class MasterAplikasiResource extends ModelResource
         return [10 => 10, 20 => 20, 50 => 50];
     }
 
+    protected function search(): array
+    {
+        return [];
+    }
+
     protected function pages(): array
     {
         return [

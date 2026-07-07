@@ -39,6 +39,11 @@ class ReportSourceResource extends ModelResource
         return [10 => 10, 20 => 20, 50 => 50];
     }
 
+    protected function search(): array
+    {
+        return [];
+    }
+
     /**
      * @return list<class-string<PageContract>>
      */

@@ -51,6 +51,10 @@ class ReportSourceFormPage extends FormPage
                         Text::make('Service Integrator', 'service_integrator')
                             ->nullable()
                             ->placeholder('mis. WIC'),
+                        Text::make('Kode Prefix', 'kode_prefix')
+                            ->nullable()
+                            ->placeholder('mis. BP, SPI')
+                            ->hint('Digunakan sebagai prefix nama file CSV export.'),
                     ]),
                 ])->columnSpan(8),
             ]),
@@ -65,6 +69,7 @@ class ReportSourceFormPage extends FormPage
             'data_source'        => 'required|string|max:50',
             'data_source_name'   => 'required|string|max:100',
             'service_integrator' => 'nullable|string|max:50',
+            'kode_prefix'        => 'nullable|string|max:20',
         ];
     }
 

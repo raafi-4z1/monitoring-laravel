@@ -16,6 +16,8 @@ use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
 use App\MoonShine\Resources\TrxPbiSettlementReport\TrxPbiSettlementReportResource;
 use App\MoonShine\Resources\WicAppMetricReport\WicAppMetricReportResource;
 use App\MoonShine\Resources\WicDbMetricReport\WicDbMetricReportResource;
+use App\MoonShine\Pages\RolePermissionsPage;
+use App\Providers\MoonShineServiceProvider;
 use MoonShine\ColorManager\ColorManager;
 use MoonShine\ColorManager\Palettes\PurplePalette;
 use MoonShine\Contracts\ColorManager\ColorManagerContract;
@@ -44,43 +46,77 @@ final class MoonShineLayout extends AppLayout
         $isAdmin = static fn (): bool =>
             auth(moonshineConfig()->getGuard())->user()?->isSuperUser() ?? false;
 
+        $canSee = static fn (string $resourceClass): \Closure => static fn (): bool
+            => MoonShineServiceProvider::canAccessResource($resourceClass);
+
+        $anyCanSee = static fn (array $resourceClasses): \Closure => static function () use ($resourceClasses): bool {
+            foreach ($resourceClasses as $resourceClass) {
+                if (MoonShineServiceProvider::canAccessResource($resourceClass)) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
         return [
             // Manajemen user — hanya admin
             MenuGroup::make('Manajemen', [
                 MenuItem::make(MoonShineUserResource::class)->icon('users'),
                 MenuItem::make(MoonShineUserRoleResource::class)->icon('shield-check'),
+                MenuItem::make(RolePermissionsPage::class, 'Hak Akses Role')->icon('lock-closed'),
             ])->icon('cog-6-tooth')->canSee($isAdmin),
 
-            // App Metric — semua role; master hanya admin
+            // App Metric — sesuai permission role; master hanya admin
             MenuGroup::make('App Metric', [
-                MenuItem::make(AppMetricResource::class, 'Data Metric')->icon('chart-bar'),
+                MenuItem::make(AppMetricResource::class, 'Data Metric')->icon('chart-bar')
+                    ->canSee($canSee(AppMetricResource::class)),
                 MenuItem::make(MasterAplikasiResource::class)->icon('server')
                     ->canSee($isAdmin),
                 MenuItem::make(MasterMetrikResource::class)->icon('beaker')
                     ->canSee($isAdmin),
                 MenuItem::make(ReportSourceResource::class, 'Report Sources')->icon('document-text')
                     ->canSee($isAdmin),
-            ])->icon('presentation-chart-line'),
+            ])->icon('presentation-chart-line')->canSee($anyCanSee([
+                AppMetricResource::class,
+                MasterAplikasiResource::class,
+                MasterMetrikResource::class,
+                ReportSourceResource::class,
+            ])),
 
-            // Elastic reports — semua role
+            // Elastic reports — sesuai permission role
             MenuGroup::make('Elastic', [
                 MenuItem::make(EngineNotifReportResource::class, 'Engine Notif')
-                    ->icon('chart-bar'),
+                    ->icon('chart-bar')
+                    ->canSee($canSee(EngineNotifReportResource::class)),
                 MenuItem::make(MteleplusReportResource::class, 'Mteleplus Reports')
-                    ->icon('chart-bar'),
+                    ->icon('chart-bar')
+                    ->canSee($canSee(MteleplusReportResource::class)),
                 MenuItem::make(TrxPbiLimitReportResource::class, 'TrxPBI Limit')
-                    ->icon('banknotes'),
+                    ->icon('banknotes')
+                    ->canSee($canSee(TrxPbiLimitReportResource::class)),
                 MenuItem::make(TrxPbiSettlementReportResource::class, 'TrxPBI Settlement')
-                    ->icon('banknotes'),
-            ])->icon('circle-stack'),
+                    ->icon('banknotes')
+                    ->canSee($canSee(TrxPbiSettlementReportResource::class)),
+            ])->icon('circle-stack')->canSee($anyCanSee([
+                EngineNotifReportResource::class,
+                MteleplusReportResource::class,
+                TrxPbiLimitReportResource::class,
+                TrxPbiSettlementReportResource::class,
+            ])),
 
-            // WIC Metric — semua role
+            // WIC Metric — sesuai permission role
             MenuGroup::make('WIC Metric', [
                 MenuItem::make(WicDbMetricReportResource::class, 'WIC DB (WICADBDC)')
-                    ->icon('server-stack'),
+                    ->icon('server-stack')
+                    ->canSee($canSee(WicDbMetricReportResource::class)),
                 MenuItem::make(WicAppMetricReportResource::class, 'WIC APP (HQWIC)')
-                    ->icon('computer-desktop'),
-            ])->icon('cpu-chip'),
+                    ->icon('computer-desktop')
+                    ->canSee($canSee(WicAppMetricReportResource::class)),
+            ])->icon('cpu-chip')->canSee($anyCanSee([
+                WicDbMetricReportResource::class,
+                WicAppMetricReportResource::class,
+            ])),
         ];
     }
 

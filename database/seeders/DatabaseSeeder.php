@@ -11,6 +11,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             MasterMetrikSeeder::class,
             ReportSourceSeeder::class,
+            ResourcePermissionSeeder::class,
         ]);
     }
 }

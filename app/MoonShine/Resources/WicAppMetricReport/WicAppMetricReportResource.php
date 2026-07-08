@@ -9,8 +9,8 @@ use App\MoonShine\Resources\WicAppMetricReport\Pages\WicAppMetricReportFetchPage
 use App\MoonShine\Resources\WicAppMetricReport\Pages\WicAppMetricReportIndexPage;
 use MoonShine\Contracts\Core\PageContract;
 use MoonShine\Crud\Handlers\Handler;
+use App\MoonShine\Handlers\GuardedExportHandler as ExportHandler;
 use MoonShine\ImportExport\Contracts\HasImportExportContract;
-use MoonShine\ImportExport\ExportHandler;
 use MoonShine\ImportExport\Traits\ImportExportConcern;
 use MoonShine\Laravel\Resources\ModelResource;
 use MoonShine\Support\Enums\Action;

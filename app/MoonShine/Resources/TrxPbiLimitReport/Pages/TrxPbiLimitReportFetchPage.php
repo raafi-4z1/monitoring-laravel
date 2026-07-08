@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\TrxPbiLimitReport\Pages;
 
+use App\MoonShine\Concerns\GuardsFetchPageAccess;
 use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
 use App\Services\TrxPbiLimitReportService;
 use Carbon\Carbon;
@@ -31,6 +32,8 @@ use Throwable;
  */
 class TrxPbiLimitReportFetchPage extends FormPage
 {
+    use GuardsFetchPageAccess;
+
     public function getTitle(): string
     {
         return 'Fetch Data TrxPBI Limit dari Elasticsearch';
@@ -59,6 +62,8 @@ class TrxPbiLimitReportFetchPage extends FormPage
      */
     protected function mainLayer(): array
     {
+        $this->guardResourceAccess();
+
         $loadingXData = '{ loading: false, init() { const t = this; const f = this.$el.querySelector(\'form\'); if (f) { f.addEventListener(\'submit\', () => { t.loading = true; }); } const r = this.$el.querySelector(\'.async-fetch-result\'); if (r) { new MutationObserver(() => { t.loading = false; }).observe(r, { childList: true, subtree: true }); } const applyTheme = () => { const dark = t.$store.darkMode.on; const card = t.$el.querySelector(\'.loading-card\'); const txt = t.$el.querySelector(\'.loading-text\'); if (card) { card.style.background = dark ? \'rgba(30,30,40,.95)\' : \'rgba(255,255,255,.98)\'; card.style.boxShadow = dark ? \'0 25px 50px rgba(0,0,0,.5)\' : \'0 25px 50px rgba(0,0,0,.15)\'; } if (txt) { txt.style.color = dark ? \'white\' : \'#1f2937\'; } }; this.$nextTick(() => { applyTheme(); }); window.addEventListener(\'darkMode:toggle\', () => { applyTheme(); }); } }';
 
         return [
@@ -138,6 +143,8 @@ class TrxPbiLimitReportFetchPage extends FormPage
     #[AsyncMethod]
     public function fetchManual(): JsonResponse
     {
+        $this->guardResourceAccess();
+
         $dateFrom = request()->input('fetch_date_from');
         $dateTo   = request()->input('fetch_date_to');
 

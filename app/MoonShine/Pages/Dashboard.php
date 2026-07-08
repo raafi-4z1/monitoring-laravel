@@ -4,11 +4,23 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Pages;
 
+use App\Models\AppMetric;
 use App\Models\EngineNotifReport;
 use App\Models\MteleplusReport;
 use App\Models\TrxPbiLimitReport;
 use App\Models\TrxPbiSettlementReport;
+use App\Models\WicAppMetricReport;
+use App\Models\WicDbMetricReport;
+use App\MoonShine\Resources\AppMetric\AppMetricResource;
+use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
+use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
+use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
+use App\MoonShine\Resources\TrxPbiSettlementReport\TrxPbiSettlementReportResource;
+use App\MoonShine\Resources\WicAppMetricReport\WicAppMetricReportResource;
+use App\MoonShine\Resources\WicDbMetricReport\WicDbMetricReportResource;
+use App\Providers\MoonShineServiceProvider;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use MoonShine\Laravel\Pages\Page;
 use MoonShine\UI\Components\Alert;
 use MoonShine\UI\Components\Layout\Column;
@@ -34,22 +46,36 @@ class Dashboard extends Page
         $yesterday = Carbon::yesterday();
         $label     = $yesterday->locale('id')->isoFormat('D MMMM YYYY');
 
-        return [
+        $components = [
             Alert::make(type: 'info')
                 ->content("Menampilkan data <strong>kemarin — {$label}</strong> dari database."),
-
-            Divider::make('Engine Notif Report'),
-            $this->engineNotifSection($yesterday),
-
-            Divider::make('Mteleplus Report'),
-            $this->mteleplusSection($yesterday),
-
-            Divider::make('TrxPBI Limit'),
-            $this->trxPbiLimitSection($yesterday),
-
-            Divider::make('TrxPBI Settlement'),
-            $this->trxPbiSettlementSection($yesterday),
         ];
+
+        $sections = [
+            [EngineNotifReportResource::class, 'Engine Notif Report', fn () => $this->engineNotifSection($yesterday)],
+            [MteleplusReportResource::class, 'Mteleplus Report', fn () => $this->mteleplusSection($yesterday)],
+            [TrxPbiLimitReportResource::class, 'TrxPBI Limit', fn () => $this->trxPbiLimitSection($yesterday)],
+            [TrxPbiSettlementReportResource::class, 'TrxPBI Settlement', fn () => $this->trxPbiSettlementSection($yesterday)],
+            [AppMetricResource::class, 'App Metric', fn () => $this->appMetricSection($yesterday)],
+            [WicDbMetricReportResource::class, 'WIC DB Metric', fn () => $this->wicMetricSection($yesterday, WicDbMetricReport::class)],
+            [WicAppMetricReportResource::class, 'WIC APP Metric', fn () => $this->wicMetricSection($yesterday, WicAppMetricReport::class)],
+        ];
+
+        foreach ($sections as [$resourceClass, $title, $builder]) {
+            if (! MoonShineServiceProvider::canAccessResource($resourceClass)) {
+                continue;
+            }
+
+            $components[] = Divider::make($title);
+            $components[] = $builder();
+        }
+
+        if (count($components) === 1) {
+            $components[] = Alert::make(type: 'warning')
+                ->content('Tidak ada data yang dapat ditampilkan untuk role Anda.');
+        }
+
+        return $components;
     }
 
     private function engineNotifSection(Carbon $date): Grid
@@ -217,5 +243,72 @@ class Dashboard extends Page
         }
 
         return Grid::make($cols);
+    }
+
+    private function appMetricSection(Carbon $date): Grid
+    {
+        $dateStr = $date->format('Y-m-d');
+        $rows    = AppMetric::whereBetween('recorded_at', [
+            $dateStr . ' 00:00:00',
+            $dateStr . ' 23:59:59',
+        ])->get();
+
+        if ($rows->isEmpty()) {
+            return Grid::make([
+                Column::make([
+                    Alert::make(type: 'warning')->content('Belum ada data App Metric untuk kemarin.'),
+                ])->columnSpan(12),
+            ]);
+        }
+
+        return Grid::make([
+            Column::make([
+                ValueMetric::make('Total Data Tercatat')
+                    ->value(number_format($rows->count())),
+            ])->columnSpan(4),
+            Column::make([
+                ValueMetric::make('Jumlah Aplikasi')
+                    ->value(number_format($rows->pluck('master_aplikasi_id')->unique()->count())),
+            ])->columnSpan(4),
+            Column::make([
+                ValueMetric::make('Jumlah Jenis Metrik')
+                    ->value(number_format($rows->pluck('master_metrik_id')->unique()->count())),
+            ])->columnSpan(4),
+        ]);
+    }
+
+    /**
+     * @param class-string<Model> $modelClass WicDbMetricReport atau WicAppMetricReport (skema identik)
+     */
+    private function wicMetricSection(Carbon $date, string $modelClass): Grid
+    {
+        $rows = $modelClass::where('trx_date', $date->format('Y-m-d'))->get();
+
+        if ($rows->isEmpty()) {
+            return Grid::make([
+                Column::make([
+                    Alert::make(type: 'warning')->content('Belum ada data untuk kemarin.'),
+                ])->columnSpan(12),
+            ]);
+        }
+
+        $cpuAvg  = $rows->where('metric_type', 'cpu')->avg('avg_pct');
+        $memAvg  = $rows->where('metric_type', 'memory')->avg('avg_pct');
+        $diskAvg = $rows->where('metric_type', 'disk')->avg('last_pct');
+
+        return Grid::make([
+            Column::make([
+                ValueMetric::make('Avg CPU')
+                    ->value($cpuAvg !== null ? number_format($cpuAvg * 100, 1) . '%' : '-'),
+            ])->columnSpan(4),
+            Column::make([
+                ValueMetric::make('Avg Memory')
+                    ->value($memAvg !== null ? number_format($memAvg * 100, 1) . '%' : '-'),
+            ])->columnSpan(4),
+            Column::make([
+                ValueMetric::make('Avg Disk Usage')
+                    ->value($diskAvg !== null ? number_format($diskAvg * 100, 1) . '%' : '-'),
+            ])->columnSpan(4),
+        ]);
     }
 }

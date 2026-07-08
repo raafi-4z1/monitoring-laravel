@@ -92,7 +92,38 @@ final class MoonShineUserFormPage extends FormPage
     {
         return [
             'name' => 'required',
-            'moonshine_user_role_id' => 'required',
+            'moonshine_user_role_id' => [
+                'required',
+                function (string $attribute, mixed $value, \Closure $fail) use ($item): void {
+                    $authUser = auth(moonshineConfig()->getGuard())->user();
+
+                    if (! $authUser instanceof MoonshineUser || $item->getKey() === null) {
+                        return;
+                    }
+
+                    $isEditingSelf = (int) $item->getKey() === (int) $authUser->getKey();
+
+                    if (
+                        $isEditingSelf
+                        && $authUser->isSuperUser()
+                        && (int) $value !== MoonshineUserRole::DEFAULT_ROLE_ID
+                    ) {
+                        $fail('Anda tidak dapat menurunkan role Anda sendiri dari Admin.');
+
+                        return;
+                    }
+
+                    if (! $isEditingSelf) {
+                        $targetIsCurrentlyAdmin = MoonshineUser::where('id', $item->getKey())
+                            ->where('moonshine_user_role_id', MoonshineUserRole::DEFAULT_ROLE_ID)
+                            ->exists();
+
+                        if ($targetIsCurrentlyAdmin) {
+                            $fail('Anda tidak dapat mengubah role Admin lain.');
+                        }
+                    }
+                },
+            ],
             'email' => [
                 'sometimes',
                 'bail',

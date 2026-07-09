@@ -37,6 +37,7 @@ class ReportSourceSeeder extends Seeder
                     'data_source'        => 'ELK',
                     'data_source_name'   => 'xmb-ls*',
                     'service_integrator' => 'WICADBDC',
+                    // 'host_ip'            => '192.168.6.3',
                     'kode_prefix'        => 'SPI',
                     'created_at'         => now(),
                     'updated_at'         => now(),
@@ -47,13 +48,14 @@ class ReportSourceSeeder extends Seeder
                     'data_source'        => 'ELK',
                     'data_source_name'   => 'xmb-ls*',
                     'service_integrator' => 'HQWIC',
+                    // 'host_ip'            => '192.168.7.3',
                     'kode_prefix'        => 'SPI',
                     'created_at'         => now(),
                     'updated_at'         => now(),
                 ],
             ],
             ['service_name'],
-            ['app_id', 'data_source', 'data_source_name', 'service_integrator', 'kode_prefix', 'updated_at']
+            ['app_id', 'data_source', 'data_source_name', 'service_integrator', 'host_ip', 'kode_prefix', 'updated_at']
         );
     }
 }

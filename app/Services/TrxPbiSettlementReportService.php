@@ -4,19 +4,31 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\ReportSource;
 use App\Models\TrxPbiSettlementReport;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class TrxPbiSettlementReportService
 {
+    public const SERVICE_NAME = 'trx_pbi_settlement';
+
     public function __construct(
         protected ElasticsearchService $es
     ) {}
 
     public function fetchAndStore(Carbon $date): bool
     {
-        $dateStr = $date->format('Y-m-d');
+        $dateStr  = $date->format('Y-m-d');
+        $sourceId = ReportSource::where('service_name', self::SERVICE_NAME)->value('id');
+
+        if ($sourceId === null) {
+            Log::channel('daily')->warning(
+                "TrxPbiSettlementReportService: report_source dengan service_name '" . self::SERVICE_NAME . "' tidak ditemukan. "
+                . 'Data akan tersimpan dengan report_source_id NULL (app_id, hostname, dll. akan kosong di tampilan/export). '
+                . 'Cek tabel report_sources — kemungkinan service_name berubah/terhapus.'
+            );
+        }
 
         try {
             $result = $this->es->queryTrxPbiSettlement($dateStr, $dateStr);
@@ -42,6 +54,7 @@ class TrxPbiSettlementReportService
                             'trx_currency' => $row['trx_currency'],
                         ],
                         [
+                            'report_source_id' => $sourceId,
                             'trx_count'    => $row['trx_count'],
                             'success_count' => $row['trx_count'],
                             'trx_amount'   => $row['trx_amount'],

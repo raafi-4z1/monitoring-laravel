@@ -11,8 +11,6 @@ use Illuminate\Support\Facades\Log;
 
 class WicAppMetricReportService
 {
-    public const HOST_IP      = '192.168.7.37';
-    public const HOST_NAME    = 'HQWIC';
     public const SERVICE_NAME = 'wic_app_dc';
 
     public function __construct(
@@ -21,18 +19,32 @@ class WicAppMetricReportService
 
     public function fetchAndStore(Carbon $date): bool
     {
-        $dateStr  = $date->format('Y-m-d');
-        $sourceId = ReportSource::where('service_name', self::SERVICE_NAME)->value('id');
+        $dateStr      = $date->format('Y-m-d');
+        $reportSource = ReportSource::where('service_name', self::SERVICE_NAME)->first();
+
+        if ($reportSource === null || (blank($reportSource->host_ip) && blank($reportSource->service_integrator))) {
+            Log::channel('daily')->warning(
+                "WicAppMetricReportService: report_source dengan service_name '" . self::SERVICE_NAME . "' "
+                . 'tidak ditemukan, atau host_ip & Service Integrator (hostname) dua-duanya kosong. '
+                . 'Fetch dibatalkan — isi salah satunya di menu Report Sources.'
+            );
+
+            return false;
+        }
+
+        $sourceId = $reportSource->id;
+        $hostIp   = (string) ($reportSource->host_ip ?? '');
+        $hostName = (string) ($reportSource->service_integrator ?? '');
 
         try {
             $cpuData  = $this->es->parseWicMetricCpuMemory(
-                $this->es->queryWicMetricCpu(self::HOST_IP, $dateStr, $dateStr, self::HOST_NAME)
+                $this->es->queryWicMetricCpu($hostIp, $dateStr, $dateStr, $hostName)
             );
             $memData  = $this->es->parseWicMetricCpuMemory(
-                $this->es->queryWicMetricMemory(self::HOST_IP, $dateStr, $dateStr, self::HOST_NAME)
+                $this->es->queryWicMetricMemory($hostIp, $dateStr, $dateStr, $hostName)
             );
             $diskData = $this->es->parseWicMetricDisk(
-                $this->es->queryWicMetricDisk(self::HOST_IP, $dateStr, $dateStr, self::HOST_NAME)
+                $this->es->queryWicMetricDisk($hostIp, $dateStr, $dateStr, $hostName)
             );
 
             $count = 0;

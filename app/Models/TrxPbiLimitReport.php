@@ -32,17 +32,6 @@ class TrxPbiLimitReport extends Model
 
     protected $with = ['reportSource'];
 
-    protected static function boot(): void
-    {
-        parent::boot();
-
-        static::creating(function (self $model): void {
-            if (is_null($model->report_source_id)) {
-                $model->report_source_id = ReportSource::where('service_name', 'trx_pbi_limit')->value('id');
-            }
-        });
-    }
-
     public function reportSource(): BelongsTo
     {
         return $this->belongsTo(ReportSource::class);

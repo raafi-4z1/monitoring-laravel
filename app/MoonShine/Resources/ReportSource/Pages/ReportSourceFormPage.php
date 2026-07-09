@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\ReportSource\Pages;
 
+use App\Models\ReportSource;
 use App\MoonShine\Resources\ReportSource\ReportSourceResource;
 use Illuminate\Validation\Rule;
 use MoonShine\Contracts\Core\TypeCasts\DataWrapperContract;
@@ -34,7 +35,12 @@ class ReportSourceFormPage extends FormPage
                         Text::make('Service Name', 'service_name')
                             ->required()
                             ->placeholder('mis. trx_pbi_limit')
-                            ->hint('Snake_case, unik per layanan.'),
+                            ->readonly($this->isItemExists())
+                            ->hint(
+                                $this->isItemExists()
+                                    ? 'Tidak bisa diubah — dipakai sebagai kunci link ke kode (Service class). Mengubahnya akan memutus link data lama & fetch berikutnya.'
+                                    : 'Snake_case, unik per layanan. Tidak bisa diubah lagi setelah disimpan.'
+                            ),
                         Text::make('App ID', 'app_id')
                             ->nullable()
                             ->placeholder('mis. AFOAFO0252'),
@@ -51,6 +57,10 @@ class ReportSourceFormPage extends FormPage
                         Text::make('Service Integrator', 'service_integrator')
                             ->nullable()
                             ->placeholder('mis. WIC'),
+                        Text::make('Host IP', 'host_ip')
+                            ->nullable()
+                            ->placeholder('mis. 192.168.6.3')
+                            ->hint('Hanya dipakai untuk sumber data yang query-nya difilter per-host (mis. WIC Metric). Kosongkan kalau tidak relevan.'),
                         Text::make('Kode Prefix', 'kode_prefix')
                             ->nullable()
                             ->placeholder('mis. BP, SPI')
@@ -64,11 +74,28 @@ class ReportSourceFormPage extends FormPage
     protected function rules(DataWrapperContract $item): array
     {
         return [
-            'service_name'       => ['required', 'string', 'max:50', Rule::unique('report_sources', 'service_name')->ignore($item->id)],
+            'service_name'       => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('report_sources', 'service_name')->ignore($item->id),
+                function (string $attribute, mixed $value, \Closure $fail) use ($item): void {
+                    if ($item->getKey() === null) {
+                        return;
+                    }
+
+                    $original = ReportSource::find($item->getKey())?->service_name;
+
+                    if ($original !== null && $original !== $value) {
+                        $fail('Service Name tidak dapat diubah setelah dibuat — dipakai sebagai kunci link ke kode (Service class).');
+                    }
+                },
+            ],
             'app_id'             => 'nullable|string|max:50',
             'data_source'        => 'required|string|max:50',
             'data_source_name'   => 'required|string|max:100',
             'service_integrator' => 'nullable|string|max:50',
+            'host_ip'            => 'nullable|string|max:45',
             'kode_prefix'        => 'nullable|string|max:20',
         ];
     }

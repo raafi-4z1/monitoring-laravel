@@ -37,6 +37,7 @@ class ReportSourceIndexPage extends IndexPage
             Text::make('Data Source',         'data_source')->sortable(),
             Text::make('Data Source Name',    'data_source_name'),
             Text::make('Service Integrator',  'service_integrator')->sortable(),
+            Text::make('Host IP',             'host_ip')->sortable(),
             Text::make('Kode Prefix',         'kode_prefix')->sortable(),
         ];
     }

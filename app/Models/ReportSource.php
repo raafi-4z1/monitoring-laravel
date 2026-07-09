@@ -16,6 +16,7 @@ class ReportSource extends Model
         'data_source',
         'data_source_name',
         'service_integrator',
+        'host_ip',
         'kode_prefix',
     ];
 }

@@ -381,6 +381,18 @@ class ElasticsearchService
     }
 
     // ✅ Query WIC Metric CPU dari xmb-ls* per jam per host (WIB +07:00)
+    /**
+     * host_ip diprioritaskan; kalau kosong, fallback filter pakai host.name (hostname).
+     */
+    private function wicMetricHostFilter(string $hostIp, string $hostHostname): array
+    {
+        if ($hostIp !== '') {
+            return ['term' => ['host.ip' => $hostIp]];
+        }
+
+        return ['term' => ['host.name' => $hostHostname]];
+    }
+
     public function queryWicMetricCpu(string $hostIp, string $dateFrom, string $dateTo, string $hostHostname = ''): array
     {
         return $this->search('xmb-ls*', [
@@ -388,7 +400,7 @@ class ElasticsearchService
             'query' => [
                 'bool' => [
                     'filter' => [
-                        ['term'  => ['host.ip'        => $hostIp]],
+                        $this->wicMetricHostFilter($hostIp, $hostHostname),
                         ['term'  => ['metricset.name' => 'cpu']],
                         ['range' => ['@timestamp'     => ['gte' => $dateFrom . 'T00:00:00.000', 'lte' => $dateTo . 'T23:59:59.999', 'time_zone' => '+07:00']]],
                     ],
@@ -415,7 +427,7 @@ class ElasticsearchService
             'query' => [
                 'bool' => [
                     'filter' => [
-                        ['term'  => ['host.ip'        => $hostIp]],
+                        $this->wicMetricHostFilter($hostIp, $hostHostname),
                         ['term'  => ['metricset.name' => 'memory']],
                         ['range' => ['@timestamp'     => ['gte' => $dateFrom . 'T00:00:00.000', 'lte' => $dateTo . 'T23:59:59.999', 'time_zone' => '+07:00']]],
                     ],
@@ -442,7 +454,7 @@ class ElasticsearchService
             'query' => [
                 'bool' => [
                     'filter' => [
-                        ['term'  => ['host.ip'        => $hostIp]],
+                        $this->wicMetricHostFilter($hostIp, $hostHostname),
                         ['term'  => ['metricset.name' => 'filesystem']],
                         ['range' => ['@timestamp'     => ['gte' => $dateFrom . 'T00:00:00.000', 'lte' => $dateTo . 'T23:59:59.999', 'time_zone' => '+07:00']]],
                     ],

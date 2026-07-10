@@ -202,45 +202,126 @@ class RolePermissionsPage extends Page
     {
         $resourceList = $resourcePermissions->values();
 
-        $head = '<th style="text-align:left;padding:.6rem;">Role</th>';
-        $head .= '<th style="padding:.6rem;text-align:center;white-space:nowrap;">Semua</th>';
+        // Precompute current permissions per role sekali saja, dipakai buat cek status "semua"
+        $roleCurrent = [];
+        foreach ($roles as $role) {
+            $roleCurrent[$role->id] = $this->decodePermissions($role->permissions);
+        }
+
+        // Background di-set lewat JS (baca warna aktual di sekitar tabel), bukan tebak nama
+        // CSS variable MoonShine — supaya pasti sama persis dengan background card/konten,
+        // bukan navbar atau layer lain.
+        $stickyColStyle = 'position:sticky;left:0;z-index:3;min-width:140px;';
+        $stickyAllStyle = 'position:sticky;left:140px;z-index:3;min-width:70px;';
+
+        $head = '<th class="rp-sticky" style="text-align:left;padding:.6rem;' . $stickyColStyle . '">Role</th>';
+        $head .= '<th class="rp-sticky" style="padding:.6rem;text-align:center;white-space:nowrap;' . $stickyAllStyle . '">Semua</th>';
 
         foreach ($resourceList as $i => $rp) {
+            $allRolesHaveThis = $roles->isNotEmpty() && $roles->every(
+                fn ($role) => in_array($rp->resource_class, $roleCurrent[$role->id], true)
+            );
+            $colChecked = $allRolesHaveThis ? 'checked' : '';
+
             $head .= '<th style="padding:.6rem;text-align:center;white-space:nowrap;">'
                 . e($rp->label)
                 . '<br><label style="display:inline-flex;align-items:center;justify-content:center;gap:.3rem;'
                 . 'font-weight:normal;font-size:.7rem;opacity:.75;">'
-                . '<input type="checkbox" onclick="var c=this.checked; document.querySelectorAll(\'.res-cb-col-' . $i . '\').forEach(function(cb){cb.checked=c;});"><span>semua</span>'
+                . '<input type="checkbox" class="select-all-col" data-col="' . $i . '" ' . $colChecked . ' '
+                . 'onclick="var c=this.checked; document.querySelectorAll(\'.res-cb-col-' . $i . '\').forEach(function(cb){cb.checked=c;}); syncRolePermSelectAll();">'
+                . '<span>semua</span>'
                 . '</label>'
                 . '</th>';
         }
 
         $rowsHtml = '';
         foreach ($roles as $role) {
-            $current = $this->decodePermissions($role->permissions);
+            $current = $roleCurrent[$role->id];
+
+            $allResourcesChecked = $resourceList->isNotEmpty() && $resourceList->every(
+                fn ($rp) => in_array($rp->resource_class, $current, true)
+            );
+            $rowChecked = $allResourcesChecked ? 'checked' : '';
 
             $rowsHtml .= '<tr>';
-            $rowsHtml .= '<td style="padding:.6rem;font-weight:600;white-space:nowrap;">' . e($role->name) . '</td>';
-            $rowsHtml .= '<td style="text-align:center;padding:.6rem;">'
-                . '<input type="checkbox" onclick="var c=this.checked; this.closest(\'tr\').querySelectorAll(\'.res-cb\').forEach(function(cb){cb.checked=c;});">'
+            $rowsHtml .= '<td class="rp-sticky" style="padding:.6rem;font-weight:600;white-space:nowrap;' . $stickyColStyle . '">' . e($role->name) . '</td>';
+            $rowsHtml .= '<td class="rp-sticky" style="text-align:center;padding:.6rem;' . $stickyAllStyle . '">'
+                . '<input type="checkbox" class="select-all-row" ' . $rowChecked . ' '
+                . 'onclick="var c=this.checked; this.closest(\'tr\').querySelectorAll(\'.res-cb\').forEach(function(cb){cb.checked=c;}); syncRolePermSelectAll();">'
                 . '</td>';
 
             foreach ($resourceList as $i => $rp) {
                 $checked = in_array($rp->resource_class, $current, true) ? 'checked' : '';
                 $rowsHtml .= '<td style="text-align:center;padding:.6rem;">'
-                    . '<input type="checkbox" class="res-cb res-cb-col-' . $i . '" name="permissions[' . $role->id . '][]" value="' . e($rp->resource_class) . '" ' . $checked . '>'
+                    . '<input type="checkbox" class="res-cb res-cb-col-' . $i . '" name="permissions[' . $role->id . '][]" value="' . e($rp->resource_class) . '" ' . $checked . ' '
+                    . 'onclick="syncRolePermSelectAll();">'
                     . '</td>';
             }
 
             $rowsHtml .= '</tr>';
         }
 
-        return '<div style="overflow-x:auto;">'
-            . '<table style="width:100%;border-collapse:collapse;">'
+        $script = <<<'JS'
+            <script>
+            function syncRolePermSelectAll() {
+                document.querySelectorAll('.select-all-row').forEach(function (rowCb) {
+                    var boxes = rowCb.closest('tr').querySelectorAll('.res-cb');
+                    rowCb.checked = boxes.length > 0 && Array.prototype.every.call(boxes, function (cb) { return cb.checked; });
+                });
+                document.querySelectorAll('.select-all-col').forEach(function (colCb) {
+                    var boxes = document.querySelectorAll('.res-cb-col-' + colCb.getAttribute('data-col'));
+                    colCb.checked = boxes.length > 0 && Array.prototype.every.call(boxes, function (cb) { return cb.checked; });
+                });
+            }
+
+            function rolePermEffectiveBg(el) {
+                while (el && el !== document.documentElement) {
+                    var bg = getComputedStyle(el).backgroundColor;
+                    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') { return bg; }
+                    el = el.parentElement;
+                }
+                return getComputedStyle(document.body).backgroundColor || '#fff';
+            }
+
+            function syncRolePermStickyBg() {
+                var wrap = document.getElementById('rp-matrix-wrap');
+                if (!wrap) { return; }
+                var bg = rolePermEffectiveBg(wrap.parentElement || wrap);
+                document.querySelectorAll('.rp-sticky').forEach(function (el) { el.style.backgroundColor = bg; });
+            }
+
+            function syncRolePermStickyBgDuring(durationMs) {
+                var start = performance.now();
+                function step(now) {
+                    syncRolePermStickyBg();
+                    if (now - start < durationMs) { requestAnimationFrame(step); }
+                }
+                requestAnimationFrame(step);
+            }
+
+            // Initial load: class/atribut tema MoonShine bisa jadi baru diterapkan SETELAH
+            // script ini mulai jalan (mis. saat Alpine masih inisialisasi), jadi baca sekali
+            // di awal saja bisa kena state lama (belum dark). Baca ulang tiap frame sesaat
+            // supaya ikut ter-koreksi begitu class tema benar-benar terpasang.
+            syncRolePermStickyBg();
+            syncRolePermStickyBgDuring(500);
+
+            window.addEventListener('darkMode:toggle', function () {
+                // MoonShine animasikan transisi warna tema (CSS transition). Baca & terapkan
+                // ulang tiap frame selama durasi transisi, supaya warna sticky ikut bertransisi
+                // halus bareng elemen lain — bukan salah sesaat lalu "lompat" ke warna benar.
+                syncRolePermStickyBgDuring(500);
+            });
+            </script>
+            JS;
+
+        return '<div id="rp-matrix-wrap" style="overflow-x:auto;">'
+            . '<table style="width:100%;border-collapse:separate;border-spacing:0;">'
             . '<thead><tr>' . $head . '</tr></thead>'
             . '<tbody>' . $rowsHtml . '</tbody>'
             . '</table>'
             . '</div>'
+            . $script
             . '<div style="margin-top:1rem;"><button type="submit" class="btn btn-primary">Simpan</button></div>';
     }
 

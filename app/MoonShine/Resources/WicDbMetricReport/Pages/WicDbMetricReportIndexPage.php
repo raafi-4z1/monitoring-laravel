@@ -220,10 +220,17 @@ class WicDbMetricReportIndexPage extends IndexPage
         $diskPaths   = $diskData->pluck('disk_path')->unique()->sort()->values();
         $diskColumns = [];
         if ($showDisk && $diskPaths->isNotEmpty()) {
+            // Zero-fill: tiap disk_path bisa punya jam yang beda-beda, samakan label
+            // sumbu-X across semua path supaya tidak ada series yang tidak selaras.
+            $diskLabels = $diskData->sortBy(fn($r) => $r->trx_date->format('Y-m-d') . sprintf('%02d', $r->trx_hour))
+                ->map($label)->unique()->values()->all();
+
             $diskChart = LineChartMetric::make('Disk Usage (%) per Jam');
             foreach ($diskPaths as $path) {
-                $pathData = $diskData->where('disk_path', $path)->values();
-                $series   = $pathData->mapWithKeys(fn($r) => [$label($r) => round(($r->last_pct ?? 0) * 100, 2)])->toArray();
+                $byLabel = $diskData->where('disk_path', $path)->keyBy($label);
+                $series  = collect($diskLabels)->mapWithKeys(
+                    fn($lbl) => [$lbl => round(($byLabel[$lbl]->last_pct ?? 0) * 100, 2)]
+                )->toArray();
                 $diskChart->series(SeriesItem::make($path, $series)->line());
             }
             $diskColumns[] = Column::make([$diskChart])->columnSpan(12);

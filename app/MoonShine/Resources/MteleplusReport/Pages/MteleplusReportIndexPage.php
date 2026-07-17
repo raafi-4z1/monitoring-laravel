@@ -1,0 +1,333 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\MoonShine\Resources\MteleplusReport\Pages;
+
+use App\Models\MteleplusReport;
+use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use MoonShine\Apexcharts\Components\DonutChartMetric;
+use MoonShine\Apexcharts\Components\LineChartMetric;
+use MoonShine\Apexcharts\Support\SeriesItem;
+use MoonShine\Contracts\UI\ActionButtonContract;
+use MoonShine\Contracts\UI\ComponentContract;
+use MoonShine\Contracts\UI\FieldContract;
+use MoonShine\Crud\Buttons\CreateButton;
+use MoonShine\Crud\Components\Fragment;
+use MoonShine\Crud\JsonResponse;
+use MoonShine\Crud\QueryTags\QueryTag;
+use MoonShine\Laravel\Pages\Crud\IndexPage;
+use MoonShine\Support\AlpineJs;
+use MoonShine\Support\Attributes\AsyncMethod;
+use MoonShine\Support\Enums\JsEvent;
+use MoonShine\Support\ListOf;
+use MoonShine\UI\Components\Alert;
+use MoonShine\UI\Components\Layout\Column;
+use MoonShine\UI\Components\Layout\Div;
+use MoonShine\UI\Components\Layout\Divider;
+use MoonShine\UI\Components\Layout\Grid;
+use MoonShine\UI\Components\Metrics\Wrapped\ValueMetric;
+use MoonShine\UI\Components\Table\TableBuilder;
+use MoonShine\UI\Fields\Date;
+use MoonShine\UI\Fields\DateRange;
+use MoonShine\UI\Fields\Number;
+use MoonShine\UI\Fields\Preview;
+use MoonShine\UI\Fields\Select;
+use Throwable;
+
+
+/**
+ * @extends IndexPage<MteleplusReportResource>
+ */
+class MteleplusReportIndexPage extends IndexPage
+{
+    protected bool $isLazy = true;
+
+    protected function assets(): array
+    {
+        return [
+            ...DonutChartMetric::make('')->getAssets(),
+        ];
+    }
+
+    /**
+     * @return list<FieldContract>
+     */
+    protected function fields(): iterable
+    {
+        return [
+            Date::make('Jam', 'report_hour')
+                ->withTime()
+                ->format('Y-m-d H:i')
+                ->sortable(),
+            Number::make('AKT Success',  'akt_success')->sortable(),
+            Number::make('AKT Fail',     'akt_fail')->sortable(),
+            Preview::make('AKT Total',   'akt_total')
+                ->changeFill(fn($item) => number_format($item->akt_total))
+                ->sortable(),
+            Number::make('RPIN Success', 'rpin_success')->sortable(),
+            Number::make('RPIN Fail',    'rpin_fail')->sortable(),
+            Preview::make('RPIN Total',  'rpin_total')
+                ->changeFill(fn($item) => number_format($item->rpin_total))
+                ->sortable(),
+            Preview::make('Total Success', 'total_success')
+                ->changeFill(fn($item) => number_format($item->total_success))
+                ->sortable(),
+            Preview::make('Total Fail',    'total_fail')
+                ->changeFill(fn($item) => number_format($item->total_fail))
+                ->sortable(),
+            Number::make('Incoming', 'total_incoming')->sortable(),
+            Number::make('Outgoing', 'total_outgoing')->sortable(),
+        ];
+    }
+
+    protected function topLeftButtons(): ListOf
+    {
+        return new ListOf(ActionButtonContract::class, [
+            CreateButton::for(
+                label: 'Fetch Manual',
+                resource: $this->getResource(),
+            ),
+        ]);
+    }
+
+    /**
+     * @return list<FieldContract>
+     */
+    protected function filters(): iterable
+    {
+        return [
+            DateRange::make('Tanggal', 'report_hour'),
+        ];
+    }
+
+    /**
+     * @return list<QueryTag>
+     */
+    protected function queryTags(): array
+    {
+        return [];
+    }
+
+    protected function modifyListComponent(ComponentContract $component): ComponentContract
+    {
+        return $component
+            ->columnSelection()
+            ->sticky()
+            ->stickyButtons()
+            ->async(events: [
+                AlpineJs::event(JsEvent::FRAGMENT_UPDATED, 'mteleplus-charts'),
+            ])
+            ->topRight(function () {
+                return [
+                    Div::make([
+                        Select::make('Per page')
+                            ->onChangeMethod('changeListingComponentState')
+                            ->options($this->getResource()->perPageValues())
+                            ->withoutWrapper()
+                            ->native()
+                            ->setValue($this->getResource()->getItemsPerPage()),
+                    ]),
+                ];
+            });
+    }
+
+    #[AsyncMethod]
+    public function changeListingComponentState(): JsonResponse
+    {
+        $perPage = request()->integer('value');
+
+        if ($perPage > 0) {
+            session(['mteleplusPerPage' => $perPage]);
+        }
+
+        return JsonResponse::make()
+            ->events([
+                AlpineJs::event(JsEvent::TABLE_UPDATED, $this->getListComponentName()),
+            ]);
+    }
+
+    /**
+     * @return list<ComponentContract>
+     * @throws Throwable
+     */
+    protected function topLayer(): array
+    {
+        return [
+            ...parent::topLayer()
+        ];
+    }
+
+    /**
+     * @return list<ComponentContract>
+     * @throws Throwable
+     */
+    protected function mainLayer(): array
+    {
+        [$dateFrom, $dateTo, $period, $data, $isDefault] = $this->getFilteredData();
+
+        $alerts = [$this->lastUpdateAlert()];
+
+        return [
+            ...$alerts,
+            ...parent::mainLayer(),
+
+            Fragment::make([
+                $this->buildCharts($data, $period),
+            ])
+            ->name('mteleplus-charts')
+            ->withQueryParams(),
+        ];
+    }
+
+    /**
+     * @return list<ComponentContract>
+     * @throws Throwable
+     */
+    protected function bottomLayer(): array
+    {
+        return [
+            ...parent::bottomLayer()
+        ];
+    }
+
+    protected function lastUpdateAlert(): Alert
+    {
+        $latest = MteleplusReport::latest('report_hour')->first();
+
+        return $latest
+            ? Alert::make(type: 'info')
+                ->content("Data terakhir: <strong>{$latest->report_hour->format('d M Y H:i')}</strong> — diupdate: {$latest->updated_at->format('d M Y H:i')}")
+            : Alert::make(type: 'warning')
+                ->content('Belum ada data. Gunakan Fetch Manual.');
+    }
+
+    /**
+     * @return array{0: string, 1: string, 2: string, 3: \Illuminate\Support\Collection, 4: bool}
+     */
+    private function getFilteredData(): array
+    {
+        $fromInput = request()->input('_data.filter.report_hour.from')
+            ?? request()->input('filter.report_hour.from');
+        $toInput   = request()->input('_data.filter.report_hour.to')
+            ?? request()->input('filter.report_hour.to');
+
+        $isDefault = empty($fromInput) && empty($toInput);
+
+        $dateFrom = !empty($fromInput) ? $fromInput : Carbon::yesterday()->format('Y-m-d');
+        $dateTo   = !empty($toInput)
+            ? $toInput
+            : ($isDefault ? Carbon::yesterday()->format('Y-m-d') : Carbon::now()->format('Y-m-d'));
+
+        $period = Carbon::parse($dateFrom)->format('d M Y')
+                . ' - '
+                . Carbon::parse($dateTo)->format('d M Y');
+
+        $data = MteleplusReport::query()
+            ->whereBetween('report_hour', [$dateFrom . ' 00:00:00', $dateTo . ' 23:59:59'])
+            ->orderBy('report_hour')
+            ->get();
+
+        return [$dateFrom, $dateTo, $period, $data, $isDefault];
+    }
+
+    private function buildCharts(Collection $data, string $period): Grid
+    {
+        if ($data->isEmpty()) {
+            return Grid::make([
+                Column::make([Divider::make()])->columnSpan(12),
+                Column::make([
+                    Alert::make(type: 'info')->content('Tidak ada data untuk periode ini.'),
+                ])->columnSpan(12),
+            ]);
+        }
+
+        $totalSuccess  = $data->sum('total_success');
+        $totalFail     = $data->sum('total_fail');
+        $totalIncoming = $data->sum('total_incoming');
+        $totalOutgoing = $data->sum('total_outgoing');
+        $totalAkt      = $data->sum('akt_success') + $data->sum('akt_fail');
+        $totalRpin     = $data->sum('rpin_success') + $data->sum('rpin_fail');
+
+        // Zero-fill: kumpulkan semua jam yang ada, isi jam kosong dengan 0
+        $allHours = $data->pluck('report_hour')
+            ->map(fn($h) => $h->format('Y-m-d H:i:s'))
+            ->unique()->sort()->values()->toArray();
+
+        $isSingleDay = $data->pluck('report_hour')
+            ->map(fn($h) => $h->format('Y-m-d'))->unique()->count() === 1;
+        $label = $isSingleDay
+            ? fn(string $h) => Carbon::parse($h)->format('H:i')
+            : fn(string $h) => Carbon::parse($h)->format('d/m H:i');
+
+        $byHour = $data->keyBy(fn($r) => $r->report_hour->format('Y-m-d H:i:s'));
+
+        $aktSuccessByHour  = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->akt_success  ?? 0)])->toArray();
+        $aktFailByHour     = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->akt_fail     ?? 0)])->toArray();
+        $rpinSuccessByHour = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->rpin_success ?? 0)])->toArray();
+        $rpinFailByHour    = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->rpin_fail    ?? 0)])->toArray();
+        $incomingByHour    = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->total_incoming ?? 0)])->toArray();
+        $outgoingByHour    = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->total_outgoing ?? 0)])->toArray();
+
+        return Grid::make([
+            Column::make([Divider::make()])->columnSpan(12),
+
+            Column::make([
+                Alert::make(type: 'info')
+                    ->content("Data periode: <strong>{$period}</strong>"),
+            ])->columnSpan(12),
+
+            Column::make([
+                ValueMetric::make('Total Success')
+                    ->value(number_format($totalSuccess)),
+            ])->columnSpan(3),
+
+            Column::make([
+                ValueMetric::make('Total Fail')
+                    ->value(number_format($totalFail)),
+            ])->columnSpan(3),
+
+            Column::make([
+                ValueMetric::make('Total Incoming')
+                    ->value(number_format($totalIncoming)),
+            ])->columnSpan(3),
+
+            Column::make([
+                ValueMetric::make('Total Outgoing')
+                    ->value(number_format($totalOutgoing)),
+            ])->columnSpan(3),
+
+            Column::make([
+                LineChartMetric::make('AKT per Jam')
+                    ->series(SeriesItem::make('AKT Success', $aktSuccessByHour)->line())
+                    ->series(SeriesItem::make('AKT Fail',    $aktFailByHour)->line()),
+            ])->columnSpan(6),
+
+            Column::make([
+                LineChartMetric::make('RPIN per Jam')
+                    ->series(SeriesItem::make('RPIN Success', $rpinSuccessByHour)->line())
+                    ->series(SeriesItem::make('RPIN Fail',    $rpinFailByHour)->line()),
+            ])->columnSpan(6),
+
+            Column::make([
+                LineChartMetric::make('Incoming vs Outgoing per Jam')
+                    ->series(SeriesItem::make('Incoming', $incomingByHour)->line())
+                    ->series(SeriesItem::make('Outgoing', $outgoingByHour)->line()),
+            ])->columnSpan(12),
+
+            Column::make([
+                DonutChartMetric::make('Distribusi AKT vs RPIN')
+                    ->values(['AKT' => $totalAkt, 'RPIN' => $totalRpin])
+                    ->decimals(0),
+            ])->columnSpan(6),
+
+            Column::make([
+                DonutChartMetric::make('Incoming vs Outgoing')
+                    ->values(['Incoming' => $totalIncoming, 'Outgoing' => $totalOutgoing])
+                    ->decimals(0),
+            ])->columnSpan(6),
+        ]);
+    }
+}

@@ -1,0 +1,21 @@
+ app/Console/Commands/ExportTrxPbiCsv.php           |   9 [32m+[m[31m-[m
+ app/Console/Commands/ExportWicMetricCsv.php        |   3 [32m+[m
+ app/Console/Commands/FetchTrxPbiLimitReport.php    |   7 [32m+[m[31m-[m
+ .../Commands/FetchTrxPbiSettlementReport.php       |   7 [32m+[m[31m-[m
+ app/Console/Commands/FetchWicAppMetricReport.php   |   7 [32m+[m[31m-[m
+ app/Console/Commands/FetchWicDbMetricReport.php    |   7 [32m+[m[31m-[m
+ app/Models/WicAppMetricReport.php                  |   2 [32m+[m
+ app/Models/WicDbMetricReport.php                   |   2 [32m+[m
+ app/MoonShine/Layouts/MoonShineLayout.php          |  83 [32m+++++[m[31m-[m
+ .../Pages/WicAppMetricReportIndexPage.php          |   7 [32m+[m
+ .../WicAppMetricReportResource.php                 |   1 [32m+[m
+ .../Pages/WicDbMetricReportIndexPage.php           |   7 [32m+[m
+ .../WicDbMetricReportResource.php                  |   1 [32m+[m
+ app/Services/ElasticsearchService.php              | 310 [32m+++++++++++++++[m[31m------[m
+ app/Services/WicAppMetricReportService.php         |   5 [32m+[m[31m-[m
+ app/Services/WicDbMetricReportService.php          |   5 [32m+[m[31m-[m
+ config/moonshine.php                               |   4 [32m+[m[31m-[m
+ ...7_000001_create_wic_db_metric_reports_table.php |   1 [32m+[m
+ ..._000002_create_wic_app_metric_reports_table.php |   1 [32m+[m
+ resources/views/welcome.blade.php                  |  26 [32m+[m[31m-[m
+ 20 files changed, 379 insertions(+), 116 deletions(-)

@@ -53,6 +53,16 @@ class ReportSourceSeeder extends Seeder
                     'created_at'         => now(),
                     'updated_at'         => now(),
                 ],
+                [
+                    'service_name'       => 'trx_pbi_loader',
+                    'app_id'             => 'AFO',
+                    'data_source'        => 'ELK',
+                    'data_source_name'   => 'wic-data-core*',
+                    'service_integrator' => 'WIC',
+                    'kode_prefix'        => 'SPB',
+                    'created_at'         => now(),
+                    'updated_at'         => now(),
+                ],
             ],
             ['service_name'],
             ['app_id', 'data_source', 'data_source_name', 'service_integrator', 'host_ip', 'kode_prefix', 'updated_at']

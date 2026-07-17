@@ -14,6 +14,7 @@ use App\MoonShine\Resources\MoonShineUserRole\MoonShineUserRoleResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
 use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
 use App\MoonShine\Resources\TrxPbiSettlementReport\TrxPbiSettlementReportResource;
+use App\MoonShine\Resources\TrxPbiLoaderReport\TrxPbiLoaderReportResource;
 use App\MoonShine\Resources\WicAppMetricReport\WicAppMetricReportResource;
 use App\MoonShine\Resources\WicDbMetricReport\WicDbMetricReportResource;
 use App\MoonShine\Pages\RolePermissionsPage;
@@ -98,11 +99,15 @@ final class MoonShineLayout extends AppLayout
                 MenuItem::make(TrxPbiSettlementReportResource::class, 'TrxPBI Settlement')
                     ->icon('banknotes')
                     ->canSee($canSee(TrxPbiSettlementReportResource::class)),
+                MenuItem::make(TrxPbiLoaderReportResource::class, 'TrxPBI Loader')
+                    ->icon('cpu-chip')
+                    ->canSee($canSee(TrxPbiLoaderReportResource::class)),
             ])->icon('circle-stack')->canSee($anyCanSee([
                 EngineNotifReportResource::class,
                 MteleplusReportResource::class,
                 TrxPbiLimitReportResource::class,
                 TrxPbiSettlementReportResource::class,
+                TrxPbiLoaderReportResource::class,
             ])),
 
             // WIC Metric — sesuai permission role

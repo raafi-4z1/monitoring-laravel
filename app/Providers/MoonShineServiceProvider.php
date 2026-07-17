@@ -18,6 +18,8 @@ use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
 use App\MoonShine\Resources\TrxPbiLimitReport\Pages\TrxPbiLimitReportFetchPage;
 use App\MoonShine\Resources\TrxPbiSettlementReport\TrxPbiSettlementReportResource;
 use App\MoonShine\Resources\TrxPbiSettlementReport\Pages\TrxPbiSettlementReportFetchPage;
+use App\MoonShine\Resources\TrxPbiLoaderReport\TrxPbiLoaderReportResource;
+use App\MoonShine\Resources\TrxPbiLoaderReport\Pages\TrxPbiLoaderReportFetchPage;
 use App\MoonShine\Resources\WicDbMetricReport\WicDbMetricReportResource;
 use App\MoonShine\Resources\WicDbMetricReport\Pages\WicDbMetricReportFetchPage;
 use App\MoonShine\Resources\WicAppMetricReport\WicAppMetricReportResource;
@@ -119,6 +121,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 MteleplusReportResource::class,
                 TrxPbiLimitReportResource::class,
                 TrxPbiSettlementReportResource::class,
+                TrxPbiLoaderReportResource::class,
                 AppMetricResource::class,
                 ReportSourceResource::class,
                 WicDbMetricReportResource::class,
@@ -130,6 +133,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 MteleplusReportFetchPage::class,
                 TrxPbiLimitReportFetchPage::class,
                 TrxPbiSettlementReportFetchPage::class,
+                TrxPbiLoaderReportFetchPage::class,
                 WicDbMetricReportFetchPage::class,
                 WicAppMetricReportFetchPage::class,
                 RolePermissionsPage::class,

@@ -36,3 +36,10 @@ Schedule::command('report:fetch-wic-app-metric')
     ->withoutOverlapping()
     ->then(fn () => Artisan::call('report:export-wic-metric-csv'))
     ->appendOutputTo(storage_path('logs/wic-app-metric-fetch.log'));
+
+// then() memicu export CSV setelah fetch TrxPBI Loader selesai
+Schedule::command('report:fetch-trx-pbi-loader')
+    ->dailyAt('00:17')
+    ->withoutOverlapping()
+    ->then(fn () => Artisan::call('report:export-trx-pbi-loader-csv'))
+    ->appendOutputTo(storage_path('logs/trx-pbi-loader-fetch.log'));

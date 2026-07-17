@@ -8,6 +8,7 @@ use App\Models\AppMetric;
 use App\Models\EngineNotifReport;
 use App\Models\MteleplusReport;
 use App\Models\TrxPbiLimitReport;
+use App\Models\TrxPbiLoaderReport;
 use App\Models\TrxPbiSettlementReport;
 use App\Models\WicAppMetricReport;
 use App\Models\WicDbMetricReport;
@@ -15,6 +16,7 @@ use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
 use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
+use App\MoonShine\Resources\TrxPbiLoaderReport\TrxPbiLoaderReportResource;
 use App\MoonShine\Resources\TrxPbiSettlementReport\TrxPbiSettlementReportResource;
 use App\MoonShine\Resources\WicAppMetricReport\WicAppMetricReportResource;
 use App\MoonShine\Resources\WicDbMetricReport\WicDbMetricReportResource;
@@ -56,6 +58,7 @@ class Dashboard extends Page
             [MteleplusReportResource::class, 'Mteleplus Report', fn () => $this->mteleplusSection($yesterday)],
             [TrxPbiLimitReportResource::class, 'TrxPBI Limit', fn () => $this->trxPbiLimitSection($yesterday)],
             [TrxPbiSettlementReportResource::class, 'TrxPBI Settlement', fn () => $this->trxPbiSettlementSection($yesterday)],
+            [TrxPbiLoaderReportResource::class, 'TrxPBI Loader (Batch Job)', fn () => $this->trxPbiLoaderSection($yesterday)],
             [AppMetricResource::class, 'App Metric', fn () => $this->appMetricSection($yesterday)],
             [WicDbMetricReportResource::class, 'WIC DB Metric', fn () => $this->wicMetricSection($yesterday, WicDbMetricReport::class)],
             [WicAppMetricReportResource::class, 'WIC APP Metric', fn () => $this->wicMetricSection($yesterday, WicAppMetricReport::class)],
@@ -243,6 +246,40 @@ class Dashboard extends Page
         }
 
         return Grid::make($cols);
+    }
+
+    private function trxPbiLoaderSection(Carbon $date): Grid
+    {
+        $rows = TrxPbiLoaderReport::where('trx_date', $date->format('Y-m-d'))->get();
+
+        if ($rows->isEmpty()) {
+            return Grid::make([
+                Column::make([
+                    Alert::make(type: 'warning')->content('Belum ada data TrxPBI Loader untuk kemarin.'),
+                ])->columnSpan(12),
+            ]);
+        }
+
+        $success = $rows->where('status_job', 'success');
+
+        return Grid::make([
+            Column::make([
+                ValueMetric::make('Total Record')
+                    ->value(number_format($rows->sum('record_processed'))),
+            ])->columnSpan(3),
+            Column::make([
+                ValueMetric::make('Avg Throughput (row/s)')
+                    ->value($success->isNotEmpty() ? number_format($success->avg('throughput_row_per_sec'), 2) : '-'),
+            ])->columnSpan(3),
+            Column::make([
+                ValueMetric::make('Avg Durasi (s)')
+                    ->value(number_format($rows->avg('duration_sec'), 0)),
+            ])->columnSpan(3),
+            Column::make([
+                ValueMetric::make('Job Gagal')
+                    ->value(number_format($rows->where('status_job', 'failed')->count())),
+            ])->columnSpan(3),
+        ]);
     }
 
     private function appMetricSection(Carbon $date): Grid

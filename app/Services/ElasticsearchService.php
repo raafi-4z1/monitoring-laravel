@@ -617,4 +617,188 @@ class ElasticsearchService
 
         return $parsed;
     }
+
+    // ✅ Query TrxPBI Loader (batch job) dari wic-data-core* — dokumen mentah.
+    //
+    // Beda dari query lain: field `trx_time` di index ini bertipe `text` (format
+    // "DD/MM/YYYY HH:MM:SS"), bukan `date`, jadi TIDAK bisa di-date_histogram di ES.
+    // Solusinya tarik dokumen mentah lalu group per jam di PHP (lihat parseTrxPbiLoader).
+    // Aman karena volumenya kecil (ribuan dokumen, bukan jutaan).
+    //
+    // Range difilter di `@datelog` (timestamp asli) dengan pelebaran ±20 menit, karena
+    // trx_time bisa sedikit beda dengan waktu log-nya. Penyaringan tanggal yang presisi
+    // dilakukan di PHP berdasarkan trx_time.
+    public function queryTrxPbiLoader(string $dateFrom, string $dateTo): array
+    {
+        return $this->search('wic-data-core*', [
+            'size'    => 10000,
+            '_source' => ['trx_time', 'filename', 'keyword', 'success_row'],
+            'query'   => [
+                'bool' => [
+                    'filter' => [
+                        ['terms' => ['keyword.keyword' => ['DATA BERHASIL PROSES', 'DATA GAGAL PROSES']]],
+                        ['exists' => ['field' => 'trx_time']],
+                        ['range' => [
+                            '@datelog' => [
+                                'gte'       => $dateFrom . 'T00:00:00.000||-20m',
+                                'lte'       => $dateTo . 'T23:59:59.999||+20m',
+                                'time_zone' => '+07:00',
+                            ],
+                        ]],
+                    ],
+                    'must_not' => [
+                        ['term' => ['trx_time.keyword' => '-']],
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Parse hasil queryTrxPbiLoader jadi agregat per (tanggal, jam, status).
+     *
+     * Tiap dokumen = 1 run batch: trx_time = waktu mulai, timestamp di nama file
+     * (extrf1sp_YYYYMMDD_HHMMSS.txt) = waktu selesai.
+     *
+     * start_time/end_time/duration_sec = rata-rata dalam grup. record_processed:
+     * - status success: SUM(success_row) — satu dokumen "DATA BERHASIL PROSES" bisa
+     *   mewakili >1 baris sukses yang cuma ditulis 1 baris log.
+     * - status failed: COUNT dokumen "DATA GAGAL PROSES" — setiap kegagalan ditulis
+     *   sebagai baris log tersendiri, jadi 1 dokumen = 1 kegagalan. Tapi untuk
+     *   start_time/end_time/duration_sec, beberapa dokumen gagal dari filename yang
+     *   sama digabung dulu jadi 1 titik data (start dirata-rata, end selalu sama)
+     *   supaya 1 batch run tidak membobot rata-rata jam lebih berat dari batch run lain.
+     *
+     * @param  list<string>  $onlyDates  Batasi ke tanggal ini saja (Y-m-d), hasil filter presisi by trx_time
+     * @return array<string, array<string, mixed>>  key: "Y-m-d|H|status"
+     */
+    public function parseTrxPbiLoader(array $result, array $onlyDates = []): array
+    {
+        $groups = [];
+
+        foreach ($result['hits']['hits'] ?? [] as $hit) {
+            $src      = $hit['_source'] ?? [];
+            $trxTime  = trim((string) ($src['trx_time'] ?? ''));
+            $filename = (string) ($src['filename'] ?? '');
+
+            $start = $this->parseTrxPbiLoaderTrxTime($trxTime);
+            $end   = $this->parseTrxPbiLoaderFilenameTime($filename);
+
+            // trx_time wajib ada & valid — dokumen tanpa itu diabaikan (sesuai spesifikasi)
+            if ($start === null) {
+                continue;
+            }
+
+            $dateStr = $start->format('Y-m-d');
+
+            if ($onlyDates !== [] && ! in_array($dateStr, $onlyDates, true)) {
+                continue;
+            }
+
+            $status = ($src['keyword'] ?? '') === 'DATA BERHASIL PROSES' ? 'success' : 'failed';
+            $hour   = (int) $start->format('G');
+            $key    = $dateStr . '|' . $hour . '|' . $status;
+
+            if (! isset($groups[$key])) {
+                $groups[$key] = [
+                    'trx_date'         => $dateStr,
+                    'trx_hour'         => $hour,
+                    'status_job'       => $status,
+                    'record_processed' => 0,
+                    '_start_secs'      => [],
+                    '_end_secs'        => [],
+                    '_failed_files'    => [],
+                ];
+            }
+
+            $groups[$key]['record_processed'] += $status === 'success'
+                ? (int) ($src['success_row'] ?? 0)
+                : 1;
+
+            // start_time & end_time HARUS dihitung dari dokumen yang sama persis (bukan
+            // himpunan terpisah) supaya keduanya konsisten & end_time tidak pernah lebih
+            // awal dari start_time.
+            if ($end !== null) {
+                $duration = $end->getTimestamp() - $start->getTimestamp();
+
+                if ($duration >= 0) {
+                    if ($status === 'failed') {
+                        // 1 filename bisa punya beberapa baris "DATA GAGAL PROSES" (1 baris
+                        // log per kegagalan). Kumpulkan dulu per filename supaya nanti cuma
+                        // jadi 1 titik data ke rata-rata grup — bukan 1 titik per baris gagal,
+                        // supaya file yang gagal berkali-kali tidak membobot rata-rata lebih berat.
+                        $groups[$key]['_failed_files'][$filename]['starts'][] = $this->secondsOfDay($start);
+                        $groups[$key]['_failed_files'][$filename]['end'] = $this->secondsOfDay($end);
+                    } else {
+                        $groups[$key]['_start_secs'][] = $this->secondsOfDay($start);
+                        $groups[$key]['_end_secs'][] = $this->secondsOfDay($end);
+                    }
+                }
+            }
+        }
+
+        foreach ($groups as $key => $g) {
+            foreach ($g['_failed_files'] as $file) {
+                $groups[$key]['_start_secs'][] = (int) round(array_sum($file['starts']) / count($file['starts']));
+                $groups[$key]['_end_secs'][] = $file['end'];
+            }
+        }
+
+        $parsed = [];
+
+        foreach ($groups as $key => $g) {
+            $avgStart = $g['_start_secs'] !== [] ? (int) round(array_sum($g['_start_secs']) / count($g['_start_secs'])) : null;
+            $avgEnd   = $g['_end_secs'] !== [] ? (int) round(array_sum($g['_end_secs']) / count($g['_end_secs'])) : null;
+            // duration_sec diturunkan dari end_time - start_time (bukan dirata-rata sendiri)
+            // supaya selalu sinkron dengan yang tampil di start_time/end_time.
+            $avgDur = ($avgStart !== null && $avgEnd !== null) ? max(0, $avgEnd - $avgStart) : 0;
+
+            $parsed[$key] = [
+                'trx_date'               => $g['trx_date'],
+                'trx_hour'               => $g['trx_hour'],
+                'status_job'             => $g['status_job'],
+                'start_time'             => $avgStart !== null ? $this->secondsToTime($avgStart) : null,
+                'end_time'               => $avgEnd !== null ? $this->secondsToTime($avgEnd) : null,
+                'duration_sec'           => $avgDur,
+                'record_processed'       => $g['record_processed'],
+                'throughput_row_per_sec' => $avgDur > 0 ? round($g['record_processed'] / $avgDur, 2) : 0.0,
+            ];
+        }
+
+        return $parsed;
+    }
+
+    // trx_time formatnya "DD/MM/YYYY HH:MM:SS" (mis. "09/07/2026 15:41:58")
+    private function parseTrxPbiLoaderTrxTime(string $value): ?\DateTimeImmutable
+    {
+        if ($value === '' || $value === '-') {
+            return null;
+        }
+
+        $dt = \DateTimeImmutable::createFromFormat('d/m/Y H:i:s', $value);
+
+        return $dt instanceof \DateTimeImmutable ? $dt : null;
+    }
+
+    // nama file: "extrf1sp_YYYYMMDD_HHMMSS.txt" (mis. "extrf1sp_20260709_154213.txt")
+    private function parseTrxPbiLoaderFilenameTime(string $filename): ?\DateTimeImmutable
+    {
+        if (! preg_match('/(\d{8})_(\d{6})/', $filename, $m)) {
+            return null;
+        }
+
+        $dt = \DateTimeImmutable::createFromFormat('Ymd His', $m[1] . ' ' . $m[2]);
+
+        return $dt instanceof \DateTimeImmutable ? $dt : null;
+    }
+
+    private function secondsOfDay(\DateTimeImmutable $dt): int
+    {
+        return ((int) $dt->format('G')) * 3600 + ((int) $dt->format('i')) * 60 + (int) $dt->format('s');
+    }
+
+    private function secondsToTime(int $seconds): string
+    {
+        return sprintf('%02d:%02d:%02d', intdiv($seconds, 3600) % 24, intdiv($seconds % 3600, 60), $seconds % 60);
+    }
 }

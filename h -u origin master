@@ -1,0 +1,20 @@
+* [33m179fec2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m Menambahkan fitur P95
+* [33me3bfcc0[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m fix chart series misalignment: zero-fill missing hours across disk-path series
+* [33m3a4cf12[m add TrxPBI Loader (batch job) monitoring with ELK fetch, charts, and CSV export
+* [33mf739ae2[m fix RolePermissionsPage matrix UX: select-all sync, sticky columns, theme-aware bg
+* [33m17184ab[m harden report_sources linking: host_ip config, TrxPBI fix, lock service_name
+* [33m7d7c71d[m add dynamic role-based resource permissions with security hardening
+* [33m724d41b[m add WIC DB & APP Metric monitoring with ELK fetch, charts, and CSV export
+* [33m7824b16[m upd ExportTrxPbiCsv
+* [33m968bec1[m add TrxPBI CSV export features and scheduler automation
+* [33m7d0339c[m upd readme
+* [33maf59d18[m refactor TrxPBI schema, add report_sources, and clean up migrations
+* [33m278e144[m fix TrxPBI chart x-axis labels and today filter not showing
+* [33mfc56e44[m refactor Engine Notif & Mteleplus to per-hour storage with charts
+* [33m4c6caa3[m improve dashboard and chart defaults across all reports
+* [33m9582c9d[m redirect root to /admin and add LAN HTTPS setup notes
+* [33meb5e77f[m add TrxPBI Limit & Settlement per-hour reports from Elasticsearch
+* [33m55635c8[m  integrate master data for app_metrics
+* [33m35f5866[m add enums
+* [33m6ffc18b[m add Role-based Access
+* [33m49ba527[m add metric

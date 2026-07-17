@@ -233,7 +233,7 @@ Jadwalkan `php artisan schedule:run` berjalan tiap menit dari direktori project.
 * * * * * cd /var/www/monitoring-laravel && php artisan schedule:run >> /dev/null 2>&1
 ```
 
----
+---asdad
 
 ## Artisan Commands
 

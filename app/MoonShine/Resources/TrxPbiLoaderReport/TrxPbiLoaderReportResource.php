@@ -27,7 +27,7 @@ class TrxPbiLoaderReportResource extends ModelResource implements HasImportExpor
 
     protected string $model         = TrxPbiLoaderReport::class;
     protected string $column        = 'trx_date';
-    protected string $title         = 'TrxPBI Loader';
+    protected string $title         = 'Batch Job';
     protected string $sortColumn    = 'trx_date';
     protected int    $itemsPerPage  = 25;
     protected bool   $usePagination = true;

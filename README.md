@@ -10,7 +10,7 @@ Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang menginteg
 - **mTeleplus Report** — laporan per jam mTeleplus dari Elasticsearch
 - **TrxPBI Limit Report** — laporan per jam transaksi WIC PBI Cek Limit, dikelompokkan per mata uang
 - **TrxPBI Settlement Report** — laporan per jam transaksi WIC PBI Settlement, dikelompokkan per mata uang
-- **TrxPBI Loader** — laporan per jam batch job loader: durasi, record diproses, throughput (row/detik), dan status job (success/failed)
+- **TrxPBI Loader (Batch Job)** — laporan per jam batch job loader: durasi, record diproses, throughput (row/detik), dan status job (success/failed)
 - **System Online** — laporan per jam response time rata-rata layanan WIC (SVC Service & Login) dari Elasticsearch
 - **WIC DB Metric** — laporan per jam metrik server WIC DB: CPU, Memory, Disk
 - **WIC APP Metric** — laporan per jam metrik server WIC APP: CPU, Memory, Disk
@@ -345,7 +345,7 @@ Sistem role bersifat dinamis, dikelola dari database — bukan hardcode.
 
 **TrxPBI Settlement** — tabel per jam per mata uang, chart (ValueMetric + LineChart + DonutChart), fetch manual, export
 
-**TrxPBI Loader** — tabel batch job per jam per status; chart Record Processed, Throughput (row/detik), dan Durasi (success vs failed); filter status job; fetch manual; export Excel & CSV
+**TrxPBI Loader (Batch Job)** — tabel batch job per jam per status; chart Record Processed, Throughput (row/detik), dan Durasi (success vs failed); filter status job; fetch manual; export Excel & CSV
 
 **System Online** — tabel response time rata-rata per jam per service (SVC Service & Login); chart Response Time Avg (ms) per service; filter service; fetch manual; export Excel & CSV
 

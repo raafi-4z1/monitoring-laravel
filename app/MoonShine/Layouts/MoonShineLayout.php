@@ -100,7 +100,7 @@ final class MoonShineLayout extends AppLayout
                 MenuItem::make(TrxPbiSettlementReportResource::class, 'TrxPBI Settlement')
                     ->icon('banknotes')
                     ->canSee($canSee(TrxPbiSettlementReportResource::class)),
-                MenuItem::make(TrxPbiLoaderReportResource::class, 'TrxPBI Loader')
+                MenuItem::make(TrxPbiLoaderReportResource::class, 'Batch Job')
                     ->icon('cpu-chip')
                     ->canSee($canSee(TrxPbiLoaderReportResource::class)),
                 MenuItem::make(SystemOnlineReportResource::class, 'System Online')

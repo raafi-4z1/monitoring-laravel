@@ -36,7 +36,7 @@ class TrxPbiLoaderReportFetchPage extends FormPage
 
     public function getTitle(): string
     {
-        return 'Fetch Data TrxPBI Loader dari Elasticsearch';
+        return 'Fetch Data Batch Job dari Elasticsearch';
     }
 
     public function getBreadcrumbs(): array
@@ -63,7 +63,7 @@ class TrxPbiLoaderReportFetchPage extends FormPage
         $loadingXData = '{ loading: false, init() { const t = this; const f = this.$el.querySelector(\'form\'); if (f) { f.addEventListener(\'submit\', () => { t.loading = true; }); } const r = this.$el.querySelector(\'.async-fetch-result\'); if (r) { new MutationObserver(() => { t.loading = false; }).observe(r, { childList: true, subtree: true }); } const applyTheme = () => { const dark = t.$store.darkMode.on; const card = t.$el.querySelector(\'.loading-card\'); const txt = t.$el.querySelector(\'.loading-text\'); if (card) { card.style.background = dark ? \'rgba(30,30,40,.95)\' : \'rgba(255,255,255,.98)\'; card.style.boxShadow = dark ? \'0 25px 50px rgba(0,0,0,.5)\' : \'0 25px 50px rgba(0,0,0,.15)\'; } if (txt) { txt.style.color = dark ? \'white\' : \'#1f2937\'; } }; this.$nextTick(() => { applyTheme(); }); window.addEventListener(\'darkMode:toggle\', () => { applyTheme(); }); } }';
 
         return [
-            Heading::make('Fetch Data TrxPBI Loader dari Elasticsearch'),
+            Heading::make('Fetch Data Batch Job dari Elasticsearch'),
 
             Alert::make(type: 'warning')
                 ->content('Gunakan form ini untuk mengambil data dari Elasticsearch berdasarkan rentang tanggal tertentu dan menyimpannya ke database. Maksimal 90 hari per fetch.'),

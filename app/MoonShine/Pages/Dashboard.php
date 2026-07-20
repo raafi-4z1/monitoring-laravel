@@ -60,7 +60,7 @@ class Dashboard extends Page
             [MteleplusReportResource::class, 'Mteleplus Report', fn () => $this->mteleplusSection($yesterday)],
             [TrxPbiLimitReportResource::class, 'TrxPBI Limit', fn () => $this->trxPbiLimitSection($yesterday)],
             [TrxPbiSettlementReportResource::class, 'TrxPBI Settlement', fn () => $this->trxPbiSettlementSection($yesterday)],
-            [TrxPbiLoaderReportResource::class, 'TrxPBI Loader (Batch Job)', fn () => $this->trxPbiLoaderSection($yesterday)],
+            [TrxPbiLoaderReportResource::class, 'Batch Job', fn () => $this->trxPbiLoaderSection($yesterday)],
             [SystemOnlineReportResource::class, 'System Online', fn () => $this->systemOnlineSection($yesterday)],
             [AppMetricResource::class, 'App Metric', fn () => $this->appMetricSection($yesterday)],
             [WicDbMetricReportResource::class, 'WIC DB Metric', fn () => $this->wicMetricSection($yesterday, WicDbMetricReport::class)],
@@ -258,7 +258,7 @@ class Dashboard extends Page
         if ($rows->isEmpty()) {
             return Grid::make([
                 Column::make([
-                    Alert::make(type: 'warning')->content('Belum ada data TrxPBI Loader untuk kemarin.'),
+                    Alert::make(type: 'warning')->content('Belum ada data Batch Job untuk kemarin.'),
                 ])->columnSpan(12),
             ]);
         }

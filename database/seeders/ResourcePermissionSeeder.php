@@ -24,7 +24,7 @@ class ResourcePermissionSeeder extends Seeder
                 ['resource_class' => MteleplusReportResource::class,        'label' => 'Mteleplus Report',         'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => TrxPbiLimitReportResource::class,      'label' => 'TrxPBI Limit',             'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => TrxPbiSettlementReportResource::class, 'label' => 'TrxPBI Settlement',        'created_at' => now(), 'updated_at' => now()],
-                ['resource_class' => TrxPbiLoaderReportResource::class,     'label' => 'TrxPBI Loader',            'created_at' => now(), 'updated_at' => now()],
+                ['resource_class' => TrxPbiLoaderReportResource::class,     'label' => 'Batch Job',                'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => SystemOnlineReportResource::class,     'label' => 'System Online',            'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => AppMetricResource::class,              'label' => 'App Metric',               'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => WicDbMetricReportResource::class,      'label' => 'WIC DB Metric',            'created_at' => now(), 'updated_at' => now()],

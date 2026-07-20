@@ -43,3 +43,10 @@ Schedule::command('report:fetch-trx-pbi-loader')
     ->withoutOverlapping()
     ->then(fn () => Artisan::call('report:export-trx-pbi-loader-csv'))
     ->appendOutputTo(storage_path('logs/trx-pbi-loader-fetch.log'));
+
+// then() memicu export CSV setelah fetch System Online selesai
+Schedule::command('report:fetch-system-online')
+    ->dailyAt('00:19')
+    ->withoutOverlapping()
+    ->then(fn () => Artisan::call('report:export-system-online-csv'))
+    ->appendOutputTo(storage_path('logs/system-online-fetch.log'));

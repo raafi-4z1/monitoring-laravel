@@ -63,6 +63,16 @@ class ReportSourceSeeder extends Seeder
                     'created_at'         => now(),
                     'updated_at'         => now(),
                 ],
+                [
+                    'service_name'       => 'system_online',
+                    'app_id'             => 'AFO',
+                    'data_source'        => 'ELK',
+                    'data_source_name'   => 'wic-access-*',
+                    'service_integrator' => 'WIC',
+                    'kode_prefix'        => 'SPO',
+                    'created_at'         => now(),
+                    'updated_at'         => now(),
+                ],
             ],
             ['service_name'],
             ['app_id', 'data_source', 'data_source_name', 'service_integrator', 'host_ip', 'kode_prefix', 'updated_at']

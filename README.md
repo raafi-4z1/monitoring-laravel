@@ -11,6 +11,7 @@ Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang menginteg
 - **TrxPBI Limit Report** — laporan per jam transaksi WIC PBI Cek Limit, dikelompokkan per mata uang
 - **TrxPBI Settlement Report** — laporan per jam transaksi WIC PBI Settlement, dikelompokkan per mata uang
 - **TrxPBI Loader** — laporan per jam batch job loader: durasi, record diproses, throughput (row/detik), dan status job (success/failed)
+- **System Online** — laporan per jam response time rata-rata layanan WIC (SVC Service & Login) dari Elasticsearch
 - **WIC DB Metric** — laporan per jam metrik server WIC DB: CPU, Memory, Disk
 - **WIC APP Metric** — laporan per jam metrik server WIC APP: CPU, Memory, Disk
 - **App Metrics** — input manual metrik server (CPU, Memory, Disk, dll.) dengan grafik per jenis metrik
@@ -27,6 +28,7 @@ Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang menginteg
 - **Auto Export CSV TrxPBI** — setelah fetch harian selesai, data TrxPBI Limit & Settlement kemarin diekspor otomatis ke satu file CSV
 - **Auto Export CSV WIC Metric** — setelah fetch WIC APP selesai, data WIC DB + WIC APP kemarin diekspor otomatis ke satu file CSV
 - **Auto Export CSV TrxPBI Loader** — setelah fetch TrxPBI Loader selesai, data batch job kemarin diekspor otomatis ke CSV
+- **Auto Export CSV System Online** — setelah fetch System Online selesai, data response time kemarin diekspor otomatis ke CSV
 - **Role-based Access (Dinamis)** — Admin selalu akses penuh; role lain diatur per-resource lewat halaman Hak Akses Role (checkbox matrix, tersimpan di database, default tertutup)
 
 ---
@@ -45,6 +47,8 @@ monitoring-laravel/
 │   │       ├── ExportTrxPbiCsv.php              # Export gabungan TrxPBI Limit+Settlement ke CSV
 │   │       ├── FetchTrxPbiLoaderReport.php       # Fetch batch job TrxPBI Loader
 │   │       ├── ExportTrxPbiLoaderCsv.php         # Export TrxPBI Loader ke CSV
+│   │       ├── FetchSystemOnlineReport.php       # Fetch System Online (response time)
+│   │       ├── ExportSystemOnlineCsv.php         # Export System Online ke CSV
 │   │       ├── FetchWicMetricReport.php          # Fetch WIC DB Metric
 │   │       ├── FetchWicAppMetricReport.php       # Fetch WIC APP Metric
 │   │       └── ExportWicMetricCsv.php            # Export gabungan WIC DB+APP ke CSV
@@ -155,6 +159,7 @@ Opsional — folder tujuan file export CSV (default: `storage/app/exports` kalau
 TRX_PBI_EXPORT_PATH=
 WIC_METRIC_EXPORT_PATH=
 TRX_PBI_LOADER_EXPORT_PATH=
+SYSTEM_ONLINE_EXPORT_PATH=
 ```
 
 Opsional — prefix URL admin panel (default: `admin` kalau dikosongkan):
@@ -212,8 +217,9 @@ Alur harian (ringkas):
 | Dini hari | Fetch WIC DB Metric dari Elasticsearch |
 | Dini hari | Fetch WIC APP Metric → **auto export** WIC Metric CSV |
 | Dini hari | Fetch TrxPBI Loader → **auto export** TrxPBI Loader CSV |
+| Dini hari | Fetch System Online → **auto export** System Online CSV |
 
-File CSV disimpan di folder yang dikonfigurasi di `.env` (`TRX_PBI_EXPORT_PATH` / `WIC_METRIC_EXPORT_PATH` / `TRX_PBI_LOADER_EXPORT_PATH`), terstruktur per tahun/bulan/tanggal. Nama file dibedakan lewat `kode_prefix` di tabel `report_sources` (mis. `BP` untuk TrxPBI, `SPB` untuk TrxPBI Loader, `SPI` untuk WIC Metric), sehingga aman berdampingan dalam satu folder.
+File CSV disimpan di folder yang dikonfigurasi di `.env` (`TRX_PBI_EXPORT_PATH` / `WIC_METRIC_EXPORT_PATH` / `TRX_PBI_LOADER_EXPORT_PATH` / `SYSTEM_ONLINE_EXPORT_PATH`), terstruktur per tahun/bulan/tanggal. Nama file dibedakan lewat `kode_prefix` di tabel `report_sources` (mis. `BP` untuk TrxPBI, `SPB` untuk TrxPBI Loader, `SPI` untuk WIC Metric, `SPO` untuk System Online), sehingga aman berdampingan dalam satu folder.
 
 ### Menjalankan Scheduler
 
@@ -245,6 +251,8 @@ php artisan report:fetch-trx-pbi-limit
 php artisan report:fetch-trx-pbi-settlement
 php artisan report:fetch-trx-pbi-loader
 php artisan report:fetch-trx-pbi-loader --date=YYYY-MM-DD    # tanggal tertentu
+php artisan report:fetch-system-online
+php artisan report:fetch-system-online --date=YYYY-MM-DD     # tanggal tertentu
 php artisan report:fetch-wic-metric
 php artisan report:fetch-wic-app-metric
 
@@ -253,6 +261,8 @@ php artisan report:export-trx-pbi-csv                          # TrxPBI kemarin
 php artisan report:export-trx-pbi-csv --date=YYYY-MM-DD         # TrxPBI tanggal tertentu
 php artisan report:export-trx-pbi-loader-csv                    # TrxPBI Loader kemarin
 php artisan report:export-trx-pbi-loader-csv --date=YYYY-MM-DD  # TrxPBI Loader tanggal tertentu
+php artisan report:export-system-online-csv                     # System Online kemarin
+php artisan report:export-system-online-csv --date=YYYY-MM-DD   # System Online tanggal tertentu
 php artisan report:export-wic-metric-csv                        # WIC Metric kemarin
 php artisan report:export-wic-metric-csv --date=YYYY-MM-DD      # WIC Metric tanggal tertentu
 
@@ -285,7 +295,7 @@ Elasticsearch (beberapa index sumber data)
                          │        ├── Table (filter, sort, pagination, export Excel/CSV)
                          │        └── Chart (Fragment async + filter tipe metrik)
                          │
-                         └── Auto Export CSV (TrxPBI, TrxPBI Loader & WIC Metric)
+                         └── Auto Export CSV (TrxPBI, TrxPBI Loader, System Online & WIC Metric)
 ```
 
 ---
@@ -336,6 +346,8 @@ Sistem role bersifat dinamis, dikelola dari database — bukan hardcode.
 **TrxPBI Settlement** — tabel per jam per mata uang, chart (ValueMetric + LineChart + DonutChart), fetch manual, export
 
 **TrxPBI Loader** — tabel batch job per jam per status; chart Record Processed, Throughput (row/detik), dan Durasi (success vs failed); filter status job; fetch manual; export Excel & CSV
+
+**System Online** — tabel response time rata-rata per jam per service (SVC Service & Login); chart Response Time Avg (ms) per service; filter service; fetch manual; export Excel & CSV
 
 ### Menu: WIC Metric
 

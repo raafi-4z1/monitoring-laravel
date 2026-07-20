@@ -9,6 +9,7 @@ use App\Models\EngineNotifReport;
 use App\Models\MteleplusReport;
 use App\Models\TrxPbiLimitReport;
 use App\Models\TrxPbiLoaderReport;
+use App\Models\SystemOnlineReport;
 use App\Models\TrxPbiSettlementReport;
 use App\Models\WicAppMetricReport;
 use App\Models\WicDbMetricReport;
@@ -17,6 +18,7 @@ use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
 use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
 use App\MoonShine\Resources\TrxPbiLoaderReport\TrxPbiLoaderReportResource;
+use App\MoonShine\Resources\SystemOnlineReport\SystemOnlineReportResource;
 use App\MoonShine\Resources\TrxPbiSettlementReport\TrxPbiSettlementReportResource;
 use App\MoonShine\Resources\WicAppMetricReport\WicAppMetricReportResource;
 use App\MoonShine\Resources\WicDbMetricReport\WicDbMetricReportResource;
@@ -59,6 +61,7 @@ class Dashboard extends Page
             [TrxPbiLimitReportResource::class, 'TrxPBI Limit', fn () => $this->trxPbiLimitSection($yesterday)],
             [TrxPbiSettlementReportResource::class, 'TrxPBI Settlement', fn () => $this->trxPbiSettlementSection($yesterday)],
             [TrxPbiLoaderReportResource::class, 'TrxPBI Loader (Batch Job)', fn () => $this->trxPbiLoaderSection($yesterday)],
+            [SystemOnlineReportResource::class, 'System Online', fn () => $this->systemOnlineSection($yesterday)],
             [AppMetricResource::class, 'App Metric', fn () => $this->appMetricSection($yesterday)],
             [WicDbMetricReportResource::class, 'WIC DB Metric', fn () => $this->wicMetricSection($yesterday, WicDbMetricReport::class)],
             [WicAppMetricReportResource::class, 'WIC APP Metric', fn () => $this->wicMetricSection($yesterday, WicAppMetricReport::class)],
@@ -280,6 +283,29 @@ class Dashboard extends Page
                     ->value(number_format($rows->where('status_job', 'failed')->count())),
             ])->columnSpan(3),
         ]);
+    }
+
+    private function systemOnlineSection(Carbon $date): Grid
+    {
+        $rows = SystemOnlineReport::where('trx_date', $date->format('Y-m-d'))->get();
+
+        if ($rows->isEmpty()) {
+            return Grid::make([
+                Column::make([
+                    Alert::make(type: 'warning')->content('Belum ada data System Online untuk kemarin.'),
+                ])->columnSpan(12),
+            ]);
+        }
+
+        $services = $rows->pluck('service_name')->unique()->sort()->values();
+        $span     = $services->isNotEmpty() ? max(intdiv(12, $services->count()), 3) : 12;
+
+        $cols = $services->map(fn ($service) => Column::make([
+            ValueMetric::make("Avg {$service} (ms)")
+                ->value(number_format($rows->where('service_name', $service)->avg('response_time_avg_ms'), 2)),
+        ])->columnSpan($span))->all();
+
+        return Grid::make($cols);
     }
 
     private function appMetricSection(Carbon $date): Grid

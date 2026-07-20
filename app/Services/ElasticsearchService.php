@@ -801,4 +801,83 @@ class ElasticsearchService
     {
         return sprintf('%02d:%02d:%02d', intdiv($seconds, 3600) % 24, intdiv($seconds % 3600, 60), $seconds % 60);
     }
+
+    // Mapping query_string ELK -> nama service yang ditampilkan
+    private const SYSTEM_ONLINE_SERVICE_MAP = [
+        'WICService/WICService.svc' => 'SVC Service',
+        'WIC/Account/Login'         => 'Login',
+    ];
+
+    // ✅ Query System Online dari wic-access* per jam, dikelompokkan per query_string (service)
+    public function querySystemOnline(string $dateFrom, string $dateTo): array
+    {
+        return $this->search('wic-access-*', [
+            'size'  => 0,
+            'query' => [
+                'bool' => [
+                    'filter' => [
+                        ['terms' => ['query_string.keyword' => array_keys(self::SYSTEM_ONLINE_SERVICE_MAP)]],
+                        ['range' => [
+                            'date_origin' => [
+                                'gte'       => $dateFrom . 'T00:00:00.000',
+                                'lte'       => $dateTo . 'T23:59:59.999',
+                                'time_zone' => '+07:00',
+                            ],
+                        ]],
+                    ],
+                ],
+            ],
+            'aggs' => [
+                'per_hour' => [
+                    'date_histogram' => [
+                        'field'             => 'date_origin',
+                        'calendar_interval' => '1h',
+                        'format'            => 'yyyy-MM-dd HH:mm',
+                        'time_zone'         => '+07:00',
+                        'min_doc_count'     => 1,
+                    ],
+                    'aggs' => [
+                        'by_query_string' => [
+                            'terms' => [
+                                'field' => 'query_string.keyword',
+                                'size'  => 10,
+                            ],
+                            'aggs' => [
+                                'avg_time_taken' => [
+                                    'avg' => ['field' => 'time_taken'],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Parse hasil querySystemOnline jadi agregat per (jam, service_name).
+     *
+     * @return array<string, array<int, array{service_name: string, response_time_avg_ms: float}>>  key: "Y-m-d H:i"
+     */
+    public function parseSystemOnline(array $result): array
+    {
+        $buckets = $result['aggregations']['per_hour']['buckets'] ?? [];
+        $parsed  = [];
+
+        foreach ($buckets as $bucket) {
+            $hour          = $bucket['key_as_string']; // "2026-07-17 07:00"
+            $parsed[$hour] = [];
+
+            foreach ($bucket['by_query_string']['buckets'] ?? [] as $qsBucket) {
+                $queryString = $qsBucket['key'];
+
+                $parsed[$hour][] = [
+                    'service_name'         => self::SYSTEM_ONLINE_SERVICE_MAP[$queryString] ?? $queryString,
+                    'response_time_avg_ms' => round($qsBucket['avg_time_taken']['value'] ?? 0, 2),
+                ];
+            }
+        }
+
+        return $parsed;
+    }
 }

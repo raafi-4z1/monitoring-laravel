@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\TrxPbiSettlementReport\Pages;
 
+use App\MoonShine\Concerns\BuildsHourlyOrDailyChart;
 use App\Models\TrxPbiSettlementReport;
 use App\MoonShine\Resources\TrxPbiSettlementReport\TrxPbiSettlementReportResource;
 use Carbon\Carbon;
@@ -41,6 +42,8 @@ use Throwable;
  */
 class TrxPbiSettlementReportIndexPage extends IndexPage
 {
+    use BuildsHourlyOrDailyChart;
+
     protected bool $isLazy = true;
 
     protected function assets(): array
@@ -234,31 +237,32 @@ class TrxPbiSettlementReportIndexPage extends IndexPage
 
         $byCurrency = $data->groupBy('trx_currency');
 
-        // Slot key = "YYYY-MM-DD HH" (e.g. "2026-07-03 07")
-        $allSlots = $data->map(fn($r) => $r->trx_date->format('Y-m-d') . ' ' . sprintf('%02d', $r->trx_hour))
-            ->unique()->sort()->values()->toArray();
+        $sorted = $data->sortBy(fn($r) => $r->trx_date->format('Y-m-d') . sprintf('%02d', $r->trx_hour))->values();
 
-        $isSingleDay = $data->pluck('trx_date')->map(fn($d) => $d->format('Y-m-d'))->unique()->count() === 1;
-        $label = $isSingleDay
-            ? fn(string $s) => substr($s, -2) . ':00'
-            : fn(string $s) => substr($s, 8, 2) . '/' . substr($s, 5, 2) . ' ' . substr($s, -2) . ':00';
+        // Granularitas otomatis: per jam untuk rentang sempit, per hari (jumlah) untuk
+        // rentang lebar — supaya chart tidak terlalu padat/noisy saat difilter berhari-hari.
+        $g      = $this->chartGranularity($sorted, fn($r) => $r->trx_date, fn($r) => $r->trx_hour);
+        $label  = $g['label'];
+        $labels = $sorted->map($label)->unique()->values()->all();
 
-        $trxChart = LineChartMetric::make('Total Transaksi per Jam per Mata Uang');
+        $unit = $g['isDaily'] ? 'Hari' : 'Jam';
+
+        $trxChart = LineChartMetric::make("Total Transaksi per {$unit} per Mata Uang");
+        $nomChart = LineChartMetric::make("Total Nominal per {$unit} per Mata Uang");
+
         foreach ($byCurrency as $currency => $rows) {
-            $bySlot     = $rows->keyBy(fn($r) => $r->trx_date->format('Y-m-d') . ' ' . sprintf('%02d', $r->trx_hour));
-            $seriesData = collect($allSlots)->mapWithKeys(
-                fn($s) => [$label($s) => (int) ($bySlot[$s]->trx_count ?? 0)]
-            )->toArray();
-            $trxChart->series(SeriesItem::make($currency, $seriesData)->line());
-        }
+            if ($g['isDaily']) {
+                $byLabel   = $rows->groupBy($label);
+                $trxSeries = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl)?->sum('trx_count') ?? 0)])->toArray();
+                $nomSeries = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round((float) ($byLabel->get($lbl)?->sum('trx_amount') ?? 0), 2)])->toArray();
+            } else {
+                $byLabel   = $rows->keyBy($label);
+                $trxSeries = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl)?->trx_count ?? 0)])->toArray();
+                $nomSeries = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round((float) ($byLabel->get($lbl)?->trx_amount ?? 0), 2)])->toArray();
+            }
 
-        $nomChart = LineChartMetric::make('Total Nominal per Jam per Mata Uang');
-        foreach ($byCurrency as $currency => $rows) {
-            $bySlot     = $rows->keyBy(fn($r) => $r->trx_date->format('Y-m-d') . ' ' . sprintf('%02d', $r->trx_hour));
-            $seriesData = collect($allSlots)->mapWithKeys(
-                fn($s) => [$label($s) => round((float) ($bySlot[$s]->trx_amount ?? 0), 2)]
-            )->toArray();
-            $nomChart->series(SeriesItem::make($currency, $seriesData)->line());
+            $trxChart->series(SeriesItem::make($currency, $trxSeries)->line());
+            $nomChart->series(SeriesItem::make($currency, $nomSeries)->line());
         }
 
         $donutTrx = $byCurrency->map(fn($rows) => (int) $rows->sum('trx_count'))->toArray();

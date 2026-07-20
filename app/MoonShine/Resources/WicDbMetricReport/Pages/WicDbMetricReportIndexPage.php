@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\WicDbMetricReport\Pages;
 
+use App\MoonShine\Concerns\BuildsHourlyOrDailyChart;
 use App\Models\WicDbMetricReport;
 use App\MoonShine\Resources\WicDbMetricReport\WicDbMetricReportResource;
 use Carbon\Carbon;
@@ -38,6 +39,8 @@ use Throwable;
  */
 class WicDbMetricReportIndexPage extends IndexPage
 {
+    use BuildsHourlyOrDailyChart;
+
     protected bool $isLazy = true;
 
     protected function assets(): array
@@ -200,37 +203,72 @@ class WicDbMetricReportIndexPage extends IndexPage
         $memData  = $data->where('metric_type', 'memory')->sortBy(fn($r) => $r->trx_date->format('Y-m-d') . sprintf('%02d', $r->trx_hour))->values();
         $diskData = $data->where('metric_type', 'disk')->sortBy(fn($r) => $r->trx_date->format('Y-m-d') . sprintf('%02d', $r->trx_hour))->values();
 
-        $isSingleDay = $data->pluck('trx_date')->map(fn($d) => $d->format('Y-m-d'))->unique()->count() === 1;
-        $label = $isSingleDay
-            ? fn($r) => sprintf('%02d:00', $r->trx_hour)
-            : fn($r) => $r->trx_date->format('d/m') . ' ' . sprintf('%02d:00', $r->trx_hour);
+        // Granularitas otomatis: per jam untuk rentang sempit, per hari untuk rentang
+        // lebar — supaya chart tidak terlalu padat/noisy saat difilter berhari-hari.
+        $sorted = $data->sortBy(fn($r) => $r->trx_date->format('Y-m-d') . sprintf('%02d', $r->trx_hour))->values();
+        $g      = $this->chartGranularity($sorted, fn($r) => $r->trx_date, fn($r) => $r->trx_hour);
+        $label  = $g['label'];
+        $unit   = $g['isDaily'] ? 'Hari' : 'Jam';
 
         $showCpu  = $metricTypeFilter === null || $metricTypeFilter === 'cpu';
         $showMem  = $metricTypeFilter === null || $metricTypeFilter === 'memory';
         $showDisk = $metricTypeFilter === null || $metricTypeFilter === 'disk';
 
-        $cpuAvg = $cpuData->mapWithKeys(fn($r) => [$label($r) => round(($r->avg_pct ?? 0) * 100, 2)])->toArray();
-        $cpuMax = $cpuData->mapWithKeys(fn($r) => [$label($r) => round(($r->max_pct ?? 0) * 100, 2)])->toArray();
-        $cpuMin = $cpuData->mapWithKeys(fn($r) => [$label($r) => round(($r->min_pct ?? 0) * 100, 2)])->toArray();
+        // Max/Avg/Min: per hari, max = MAX dari max per-jam, min = MIN dari min per-jam,
+        // avg = AVG dari avg per-jam (bukan dihitung ulang dari raw data, karena raw data
+        // ES tidak lagi tersedia di layer ini — cukup akurat untuk keperluan tren chart).
+        $buildStats = function (Collection $rows) use ($label, $g) {
+            $labels = $rows->map($label)->unique()->values()->all();
 
-        $memAvg = $memData->mapWithKeys(fn($r) => [$label($r) => round(($r->avg_pct ?? 0) * 100, 2)])->toArray();
-        $memMax = $memData->mapWithKeys(fn($r) => [$label($r) => round(($r->max_pct ?? 0) * 100, 2)])->toArray();
-        $memMin = $memData->mapWithKeys(fn($r) => [$label($r) => round(($r->min_pct ?? 0) * 100, 2)])->toArray();
+            if ($g['isDaily']) {
+                $byLabel = $rows->groupBy($label)->map(fn($grp) => [
+                    'avg_pct' => $grp->avg('avg_pct'),
+                    'max_pct' => $grp->max('max_pct'),
+                    'min_pct' => $grp->min('min_pct'),
+                ]);
+
+                return [
+                    collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl, [])['avg_pct'] ?? 0) * 100, 2)])->toArray(),
+                    collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl, [])['max_pct'] ?? 0) * 100, 2)])->toArray(),
+                    collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl, [])['min_pct'] ?? 0) * 100, 2)])->toArray(),
+                ];
+            }
+
+            $byLabel = $rows->keyBy($label);
+
+            return [
+                collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl)?->avg_pct ?? 0) * 100, 2)])->toArray(),
+                collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl)?->max_pct ?? 0) * 100, 2)])->toArray(),
+                collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl)?->min_pct ?? 0) * 100, 2)])->toArray(),
+            ];
+        };
+
+        [$cpuAvg, $cpuMax, $cpuMin] = $buildStats($cpuData);
+        [$memAvg, $memMax, $memMin] = $buildStats($memData);
 
         $diskPaths   = $diskData->pluck('disk_path')->unique()->sort()->values();
         $diskColumns = [];
         if ($showDisk && $diskPaths->isNotEmpty()) {
             // Zero-fill: tiap disk_path bisa punya jam yang beda-beda, samakan label
             // sumbu-X across semua path supaya tidak ada series yang tidak selaras.
-            $diskLabels = $diskData->sortBy(fn($r) => $r->trx_date->format('Y-m-d') . sprintf('%02d', $r->trx_hour))
-                ->map($label)->unique()->values()->all();
+            $diskLabels = $diskData->map($label)->unique()->values()->all();
 
-            $diskChart = LineChartMetric::make('Disk Usage (%) per Jam');
+            $diskChart = LineChartMetric::make("Disk Usage (%) per {$unit}");
             foreach ($diskPaths as $path) {
-                $byLabel = $diskData->where('disk_path', $path)->keyBy($label);
-                $series  = collect($diskLabels)->mapWithKeys(
-                    fn($lbl) => [$lbl => round(($byLabel[$lbl]->last_pct ?? 0) * 100, 2)]
-                )->toArray();
+                $pathRows = $diskData->where('disk_path', $path);
+
+                if ($g['isDaily']) {
+                    $byLabel = $pathRows->groupBy($label)->map(fn($grp) => $grp->avg('last_pct'));
+                    $series  = collect($diskLabels)->mapWithKeys(
+                        fn($lbl) => [$lbl => round(($byLabel->get($lbl) ?? 0) * 100, 2)]
+                    )->toArray();
+                } else {
+                    $byLabel = $pathRows->keyBy($label);
+                    $series  = collect($diskLabels)->mapWithKeys(
+                        fn($lbl) => [$lbl => round(($byLabel->get($lbl)?->last_pct ?? 0) * 100, 2)]
+                    )->toArray();
+                }
+
                 $diskChart->series(SeriesItem::make($path, $series)->line());
             }
             $diskColumns[] = Column::make([$diskChart])->columnSpan(12);
@@ -252,7 +290,7 @@ class WicDbMetricReportIndexPage extends IndexPage
 
             ($showCpu && !empty($cpuAvg))
                 ? Column::make([
-                    LineChartMetric::make('CPU (%) per Jam')
+                    LineChartMetric::make("CPU (%) per {$unit}")
                         ->series(SeriesItem::make('Max', $cpuMax)->line())
                         ->series(SeriesItem::make('Avg', $cpuAvg)->line())
                         ->series(SeriesItem::make('Min', $cpuMin)->line()),
@@ -261,7 +299,7 @@ class WicDbMetricReportIndexPage extends IndexPage
 
             ($showMem && !empty($memAvg))
                 ? Column::make([
-                    LineChartMetric::make('Memory (%) per Jam')
+                    LineChartMetric::make("Memory (%) per {$unit}")
                         ->series(SeriesItem::make('Max', $memMax)->line())
                         ->series(SeriesItem::make('Avg', $memAvg)->line())
                         ->series(SeriesItem::make('Min', $memMin)->line()),

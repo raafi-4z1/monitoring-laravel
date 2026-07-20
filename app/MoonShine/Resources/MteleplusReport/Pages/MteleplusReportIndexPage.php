@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\MteleplusReport\Pages;
 
+use App\MoonShine\Concerns\BuildsHourlyOrDailyChart;
 use App\Models\MteleplusReport;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
 use Carbon\Carbon;
@@ -43,6 +44,8 @@ use Throwable;
  */
 class MteleplusReportIndexPage extends IndexPage
 {
+    use BuildsHourlyOrDailyChart;
+
     protected bool $isLazy = true;
 
     protected function assets(): array
@@ -251,25 +254,42 @@ class MteleplusReportIndexPage extends IndexPage
         $totalAkt      = $data->sum('akt_success') + $data->sum('akt_fail');
         $totalRpin     = $data->sum('rpin_success') + $data->sum('rpin_fail');
 
-        // Zero-fill: kumpulkan semua jam yang ada, isi jam kosong dengan 0
-        $allHours = $data->pluck('report_hour')
-            ->map(fn($h) => $h->format('Y-m-d H:i:s'))
-            ->unique()->sort()->values()->toArray();
+        // Granularitas otomatis: per jam untuk rentang sempit, per hari untuk rentang
+        // lebar — supaya chart tidak terlalu padat/noisy saat difilter berhari-hari.
+        $sorted = $data->sortBy(fn($r) => $r->report_hour->format('Y-m-d H:i:s'))->values();
+        $g      = $this->chartGranularity($sorted, fn($r) => $r->report_hour, fn($r) => (int) $r->report_hour->format('H'));
+        $label  = $g['label'];
+        $unit   = $g['isDaily'] ? 'Hari' : 'Jam';
 
-        $isSingleDay = $data->pluck('report_hour')
-            ->map(fn($h) => $h->format('Y-m-d'))->unique()->count() === 1;
-        $label = $isSingleDay
-            ? fn(string $h) => Carbon::parse($h)->format('H:i')
-            : fn(string $h) => Carbon::parse($h)->format('d/m H:i');
+        // Zero-fill: kumpulkan semua slot (jam/hari) yang ada, isi slot kosong dengan 0
+        $labels = $sorted->map($label)->unique()->values()->all();
 
-        $byHour = $data->keyBy(fn($r) => $r->report_hour->format('Y-m-d H:i:s'));
+        if ($g['isDaily']) {
+            $byLabel = $sorted->groupBy($label)->map(fn($grp) => [
+                'akt_success'     => $grp->sum('akt_success'),
+                'akt_fail'        => $grp->sum('akt_fail'),
+                'rpin_success'    => $grp->sum('rpin_success'),
+                'rpin_fail'       => $grp->sum('rpin_fail'),
+                'total_incoming'  => $grp->sum('total_incoming'),
+                'total_outgoing'  => $grp->sum('total_outgoing'),
+            ]);
 
-        $aktSuccessByHour  = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->akt_success  ?? 0)])->toArray();
-        $aktFailByHour     = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->akt_fail     ?? 0)])->toArray();
-        $rpinSuccessByHour = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->rpin_success ?? 0)])->toArray();
-        $rpinFailByHour    = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->rpin_fail    ?? 0)])->toArray();
-        $incomingByHour    = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->total_incoming ?? 0)])->toArray();
-        $outgoingByHour    = collect($allHours)->mapWithKeys(fn($h) => [$label($h) => (int) ($byHour[$h]->total_outgoing ?? 0)])->toArray();
+            $aktSuccessByHour  = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl, [])['akt_success'] ?? 0)])->toArray();
+            $aktFailByHour     = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl, [])['akt_fail'] ?? 0)])->toArray();
+            $rpinSuccessByHour = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl, [])['rpin_success'] ?? 0)])->toArray();
+            $rpinFailByHour    = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl, [])['rpin_fail'] ?? 0)])->toArray();
+            $incomingByHour    = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl, [])['total_incoming'] ?? 0)])->toArray();
+            $outgoingByHour    = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl, [])['total_outgoing'] ?? 0)])->toArray();
+        } else {
+            $byLabel = $sorted->keyBy($label);
+
+            $aktSuccessByHour  = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl)?->akt_success  ?? 0)])->toArray();
+            $aktFailByHour     = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl)?->akt_fail     ?? 0)])->toArray();
+            $rpinSuccessByHour = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl)?->rpin_success ?? 0)])->toArray();
+            $rpinFailByHour    = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl)?->rpin_fail    ?? 0)])->toArray();
+            $incomingByHour    = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl)?->total_incoming ?? 0)])->toArray();
+            $outgoingByHour    = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl)?->total_outgoing ?? 0)])->toArray();
+        }
 
         return Grid::make([
             Column::make([Divider::make()])->columnSpan(12),
@@ -300,19 +320,19 @@ class MteleplusReportIndexPage extends IndexPage
             ])->columnSpan(3),
 
             Column::make([
-                LineChartMetric::make('AKT per Jam')
+                LineChartMetric::make("AKT per {$unit}")
                     ->series(SeriesItem::make('AKT Success', $aktSuccessByHour)->line())
                     ->series(SeriesItem::make('AKT Fail',    $aktFailByHour)->line()),
             ])->columnSpan(6),
 
             Column::make([
-                LineChartMetric::make('RPIN per Jam')
+                LineChartMetric::make("RPIN per {$unit}")
                     ->series(SeriesItem::make('RPIN Success', $rpinSuccessByHour)->line())
                     ->series(SeriesItem::make('RPIN Fail',    $rpinFailByHour)->line()),
             ])->columnSpan(6),
 
             Column::make([
-                LineChartMetric::make('Incoming vs Outgoing per Jam')
+                LineChartMetric::make("Incoming vs Outgoing per {$unit}")
                     ->series(SeriesItem::make('Incoming', $incomingByHour)->line())
                     ->series(SeriesItem::make('Outgoing', $outgoingByHour)->line()),
             ])->columnSpan(12),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\EngineNotifReport\Pages;
 
+use App\MoonShine\Concerns\BuildsHourlyOrDailyChart;
 use App\Models\EngineNotifReport;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use Carbon\Carbon;
@@ -43,6 +44,8 @@ use Throwable;
  */
 class EngineNotifReportIndexPage extends IndexPage
 {
+    use BuildsHourlyOrDailyChart;
+
     protected bool $isLazy = true;
 
     protected function assets(): array
@@ -256,34 +259,36 @@ class EngineNotifReportIndexPage extends IndexPage
         $totalSms     = $data->sum('sms_success')   + $data->sum('sms_fail');
         $totalEmail   = $data->sum('email_success')  + $data->sum('email_fail');
 
-        // Zero-fill: kumpulkan semua jam yang ada, isi jam kosong dengan 0
-        $allHours = $data->pluck('report_hour')
-            ->map(fn($h) => $h->format('Y-m-d H:i:s'))
-            ->unique()->sort()->values()->toArray();
+        // Granularitas otomatis: per jam untuk rentang sempit, per hari untuk rentang
+        // lebar — supaya chart tidak terlalu padat/noisy saat difilter berhari-hari.
+        $sorted = $data->sortBy(fn($r) => $r->report_hour->format('Y-m-d H:i:s'))->values();
+        $g      = $this->chartGranularity($sorted, fn($r) => $r->report_hour, fn($r) => (int) $r->report_hour->format('H'));
+        $label  = $g['label'];
+        $unit   = $g['isDaily'] ? 'Hari' : 'Jam';
 
-        $isSingleDay = $data->pluck('report_hour')
-            ->map(fn($h) => $h->format('Y-m-d'))->unique()->count() === 1;
-        $label = $isSingleDay
-            ? fn(string $h) => Carbon::parse($h)->format('H:i')
-            : fn(string $h) => Carbon::parse($h)->format('d/m H:i');
+        // Zero-fill: kumpulkan semua slot (jam/hari) yang ada, isi slot kosong dengan 0
+        $labels = $sorted->map($label)->unique()->values()->all();
 
-        $byHour = $data->keyBy(fn($r) => $r->report_hour->format('Y-m-d H:i:s'));
+        if ($g['isDaily']) {
+            $byLabel = $sorted->groupBy($label)->map(fn($grp) => [
+                'total_success'     => $grp->sum('total_success'),
+                'total_fail'        => $grp->sum('total_fail'),
+                'avg_response_time' => $grp->avg('avg_response_time'),
+                'avg_lifespan'      => $grp->avg('avg_lifespan'),
+            ]);
 
-        $successByHour = collect($allHours)->mapWithKeys(
-            fn($h) => [$label($h) => (int) ($byHour[$h]->total_success ?? 0)]
-        )->toArray();
+            $successByHour = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl, [])['total_success'] ?? 0)])->toArray();
+            $failByHour    = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl, [])['total_fail'] ?? 0)])->toArray();
+            $avgRtByHour   = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (float) ($byLabel->get($lbl, [])['avg_response_time'] ?? 0)])->toArray();
+            $avgLsByHour   = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (float) ($byLabel->get($lbl, [])['avg_lifespan'] ?? 0)])->toArray();
+        } else {
+            $byLabel = $sorted->keyBy($label);
 
-        $failByHour = collect($allHours)->mapWithKeys(
-            fn($h) => [$label($h) => (int) ($byHour[$h]->total_fail ?? 0)]
-        )->toArray();
-
-        $avgRtByHour = collect($allHours)->mapWithKeys(
-            fn($h) => [$label($h) => (float) ($byHour[$h]->avg_response_time ?? 0)]
-        )->toArray();
-
-        $avgLsByHour = collect($allHours)->mapWithKeys(
-            fn($h) => [$label($h) => (float) ($byHour[$h]->avg_lifespan ?? 0)]
-        )->toArray();
+            $successByHour = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl)?->total_success ?? 0)])->toArray();
+            $failByHour    = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (int) ($byLabel->get($lbl)?->total_fail ?? 0)])->toArray();
+            $avgRtByHour   = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (float) ($byLabel->get($lbl)?->avg_response_time ?? 0)])->toArray();
+            $avgLsByHour   = collect($labels)->mapWithKeys(fn($lbl) => [$lbl => (float) ($byLabel->get($lbl)?->avg_lifespan ?? 0)])->toArray();
+        }
 
         return Grid::make([
             Column::make([Divider::make()])->columnSpan(12),
@@ -309,18 +314,18 @@ class EngineNotifReportIndexPage extends IndexPage
             ])->columnSpan(4),
 
             Column::make([
-                LineChartMetric::make('Success vs Fail per Jam')
+                LineChartMetric::make("Success vs Fail per {$unit}")
                     ->series(SeriesItem::make('Total Success', $successByHour)->line())
                     ->series(SeriesItem::make('Total Fail', $failByHour)->line()),
             ])->columnSpan(12),
 
             Column::make([
-                LineChartMetric::make('Avg Response Time (s) per Jam')
+                LineChartMetric::make("Avg Response Time (s) per {$unit}")
                     ->series(SeriesItem::make('Avg RT', $avgRtByHour)->line()),
             ])->columnSpan(6),
 
             Column::make([
-                LineChartMetric::make('Avg Lifespan (ms) per Jam')
+                LineChartMetric::make("Avg Lifespan (ms) per {$unit}")
                     ->series(SeriesItem::make('Avg Lifespan', $avgLsByHour)->line()),
             ])->columnSpan(6),
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\TrxPbiLoaderReport\Pages;
 
+use App\MoonShine\Concerns\BuildsHourlyOrDailyChart;
 use App\Models\TrxPbiLoaderReport;
 use App\MoonShine\Resources\TrxPbiLoaderReport\TrxPbiLoaderReportResource;
 use Carbon\Carbon;
@@ -38,6 +39,8 @@ use Throwable;
  */
 class TrxPbiLoaderReportIndexPage extends IndexPage
 {
+    use BuildsHourlyOrDailyChart;
+
     protected bool $isLazy = true;
 
     protected function assets(): array
@@ -213,34 +216,55 @@ class TrxPbiLoaderReportIndexPage extends IndexPage
 
         $sorted = $filtered->sortBy(fn($r) => $r->trx_date->format('Y-m-d') . sprintf('%02d', $r->trx_hour))->values();
 
-        $isSingleDay = $data->pluck('trx_date')->map(fn($d) => $d->format('Y-m-d'))->unique()->count() === 1;
-        $label = $isSingleDay
-            ? fn($r) => sprintf('%02d:00', $r->trx_hour)
-            : fn($r) => $r->trx_date->format('d/m') . ' ' . sprintf('%02d:00', $r->trx_hour);
+        // Granularitas otomatis: per jam untuk rentang sempit, per hari untuk rentang
+        // lebar. Dihitung dari $data (bukan $filtered) supaya keputusannya berdasarkan
+        // periode yang sedang dilihat, bukan ikut menyempit saat difilter per status.
+        $g     = $this->chartGranularity($data, fn($r) => $r->trx_date, fn($r) => $r->trx_hour);
+        $label = $g['label'];
 
         $successData = $sorted->where('status_job', 'success')->values();
         $failedData  = $sorted->where('status_job', 'failed')->values();
 
-        // Semua series dibangun dari label (jam) yang SAMA supaya sumbu-X seragam antar
-        // series — kalau Success & Failed di-map dari key yang beda-beda, series yang cuma
-        // punya sedikit titik bisa "jatuh" ke posisi default 00:00 di chart-nya.
-        $labels  = $sorted->map($label)->unique()->values()->all();
-        $bySucc  = $successData->keyBy($label);
-        $byFail  = $failedData->keyBy($label);
+        // Semua series dibangun dari label yang SAMA supaya sumbu-X seragam antar series
+        // — kalau Success & Failed di-map dari key yang beda-beda, series yang cuma punya
+        // sedikit titik bisa "jatuh" ke posisi default di chart-nya.
+        $labels = $sorted->map($label)->unique()->values()->all();
+
+        // record_processed = SUM per grup; duration_sec = AVG per grup; throughput
+        // diturunkan dari record/duration grup (bukan dirata-rata sendiri) — konsisten
+        // dengan cara duration_sec/throughput dihitung di ElasticsearchService.
+        $aggregate = function (Collection $rows): array {
+            $record = (int) $rows->sum('record_processed');
+            $dur    = (float) $rows->avg('duration_sec');
+
+            return [
+                'record_processed'       => $record,
+                'duration_sec'           => $dur,
+                'throughput_row_per_sec' => $dur > 0 ? round($record / $dur, 2) : 0.0,
+            ];
+        };
+
+        if ($g['isDaily']) {
+            $bySucc = $successData->groupBy($label)->map($aggregate);
+            $byFail = $failedData->groupBy($label)->map($aggregate);
+        } else {
+            $bySucc = $successData->keyBy($label);
+            $byFail = $failedData->keyBy($label);
+        }
 
         $recordSuccess = $throughputSuccess = $durationSuccess = [];
         $recordFailed  = $throughputFailed  = $durationFailed  = [];
 
         foreach ($labels as $lbl) {
-            $s = $bySucc->get($lbl);
-            $f = $byFail->get($lbl);
+            $s = $g['isDaily'] ? $bySucc->get($lbl) : $bySucc->get($lbl)?->toArray();
+            $f = $g['isDaily'] ? $byFail->get($lbl) : $byFail->get($lbl)?->toArray();
 
-            $recordSuccess[$lbl]     = $s?->record_processed ?? 0;
-            $recordFailed[$lbl]      = $f?->record_processed ?? 0;
-            $throughputSuccess[$lbl] = $s ? round($s->throughput_row_per_sec, 2) : 0;
-            $throughputFailed[$lbl]  = $f ? round($f->throughput_row_per_sec, 2) : 0;
-            $durationSuccess[$lbl]   = $s?->duration_sec ?? 0;
-            $durationFailed[$lbl]    = $f?->duration_sec ?? 0;
+            $recordSuccess[$lbl]     = $s['record_processed'] ?? 0;
+            $recordFailed[$lbl]      = $f['record_processed'] ?? 0;
+            $throughputSuccess[$lbl] = $s ? round($s['throughput_row_per_sec'], 2) : 0;
+            $throughputFailed[$lbl]  = $f ? round($f['throughput_row_per_sec'], 2) : 0;
+            $durationSuccess[$lbl]   = $s['duration_sec'] ?? 0;
+            $durationFailed[$lbl]    = $f['duration_sec'] ?? 0;
         }
 
         $totalRecord = $filtered->sum('record_processed');
@@ -267,7 +291,7 @@ class TrxPbiLoaderReportIndexPage extends IndexPage
 
             ($successData->isNotEmpty() || $failedData->isNotEmpty())
                 ? Column::make([
-                    LineChartMetric::make('Record Processed per Jam')
+                    LineChartMetric::make('Record Processed per ' . ($g['isDaily'] ? 'Hari' : 'Jam'))
                         ->when($successData->isNotEmpty(), fn($c) => $c->series(SeriesItem::make('Success', $recordSuccess)->line()))
                         ->when($failedData->isNotEmpty(), fn($c) => $c->series(SeriesItem::make('Failed', $recordFailed)->line())),
                 ])->columnSpan(12)
@@ -275,7 +299,7 @@ class TrxPbiLoaderReportIndexPage extends IndexPage
 
             ($successData->isNotEmpty() || $failedData->isNotEmpty())
                 ? Column::make([
-                    LineChartMetric::make('Throughput (row/detik) per Jam')
+                    LineChartMetric::make('Throughput (row/detik) per ' . ($g['isDaily'] ? 'Hari' : 'Jam'))
                         ->when($successData->isNotEmpty(), fn($c) => $c->series(SeriesItem::make('Success', $throughputSuccess)->line()))
                         ->when($failedData->isNotEmpty(), fn($c) => $c->series(SeriesItem::make('Failed', $throughputFailed)->line())),
                 ])->columnSpan(12)
@@ -283,7 +307,7 @@ class TrxPbiLoaderReportIndexPage extends IndexPage
 
             ($successData->isNotEmpty() || $failedData->isNotEmpty())
                 ? Column::make([
-                    LineChartMetric::make('Durasi (detik) per Jam')
+                    LineChartMetric::make('Durasi (detik) per ' . ($g['isDaily'] ? 'Hari' : 'Jam'))
                         ->when($successData->isNotEmpty(), fn($c) => $c->series(SeriesItem::make('Success', $durationSuccess)->line()))
                         ->when($failedData->isNotEmpty(), fn($c) => $c->series(SeriesItem::make('Failed', $durationFailed)->line())),
                 ])->columnSpan(12)

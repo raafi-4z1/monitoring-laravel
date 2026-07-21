@@ -64,7 +64,11 @@ class ExportTrxPbiCsv extends Command
 
     private function mapRows(Collection $rows): Collection
     {
-        return $rows->map(fn ($item) => [
+        // FIX: sama seperti ExportWicMetricCsv — bungkus collect($rows->all()) supaya
+        // hasil map() adalah Support\Collection murni, bukan Eloquent\Collection.
+        // Tanpa ini, ->merge() di baris 52 memanggil Eloquent\Collection::merge() yang
+        // butuh method getKey() (Model), padahal isinya sudah jadi array asosiatif.
+        return collect($rows->all())->map(fn ($item) => [
             'app_id'             => $item->reportSource?->app_id ?? '',
             'data_source'        => $item->reportSource?->data_source ?? '',
             'data_source_name'   => $item->reportSource?->data_source_name ?? '',

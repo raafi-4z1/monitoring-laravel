@@ -245,6 +245,8 @@ php artisan report:fetch-trx-pbi-limit
 php artisan report:fetch-trx-pbi-settlement
 php artisan report:fetch-trx-pbi-loader
 php artisan report:fetch-trx-pbi-loader --date=YYYY-MM-DD    # tanggal tertentu
+php artisan report:fetch-system-online
+php artisan report:fetch-system-online --date=YYYY-MM-DD     # tanggal tertentu 
 php artisan report:fetch-wic-metric
 php artisan report:fetch-wic-app-metric
 
@@ -255,6 +257,8 @@ php artisan report:export-trx-pbi-loader-csv                    # TrxPBI Loader 
 php artisan report:export-trx-pbi-loader-csv --date=YYYY-MM-DD  # TrxPBI Loader tanggal tertentu
 php artisan report:export-wic-metric-csv                        # WIC Metric kemarin
 php artisan report:export-wic-metric-csv --date=YYYY-MM-DD      # WIC Metric tanggal tertentu
+php artisan report:export-system-online-csv                     # System Online kemarin
+php artisan report:export-system-online-csv --date=YYYY-MM-DD 
 
 # Utilitas
 php artisan schedule:run

@@ -74,7 +74,13 @@ class ExportWicMetricCsv extends Command
 
     private function mapRows(Collection $items): Collection
     {
-        return $items->map(fn($r) => [
+        // FIX: bungkus dengan collect($items->all()) supaya hasil map() adalah
+        // Illuminate\Support\Collection murni, BUKAN Illuminate\Database\Eloquent\Collection.
+        // Kalau tidak, ->merge() nanti akan pakai Eloquent\Collection::merge() yang
+        // mengasumsikan tiap item punya method getKey() (Model) — padahal di sini
+        // isinya sudah diubah jadi array asosiatif biasa, sehingga error
+        // "Call to a member function getKey() on array".
+        return collect($items->all())->map(fn($r) => [
             'app_id'              => $r->reportSource?->app_id ?? '',
             'data_source'         => $r->reportSource?->data_source ?? '',
             'data_source_name'    => $r->reportSource?->data_source_name ?? '',

@@ -15,6 +15,7 @@ use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
 use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
 use App\MoonShine\Resources\TrxPbiSettlementReport\TrxPbiSettlementReportResource;
 use App\MoonShine\Resources\TrxPbiLoaderReport\TrxPbiLoaderReportResource;
+use App\MoonShine\Resources\SystemOnlineReport\SystemOnlineReportResource;
 use App\MoonShine\Resources\WicAppMetricReport\WicAppMetricReportResource;
 use App\MoonShine\Resources\WicDbMetricReport\WicDbMetricReportResource;
 use App\MoonShine\Pages\RolePermissionsPage;
@@ -167,6 +168,9 @@ final class MoonShineLayout extends AppLayout
                 MenuItem::make(TrxPbiLoaderReportResource::class, 'TrxPBI Loader')
                     ->icon('cpu-chip')
                     ->canSee($canSee(TrxPbiLoaderReportResource::class)),
+                MenuItem::make(SystemOnlineReportResource::class, 'System Online')
+                    ->icon('signal')
+                    ->canSee($canSee(SystemOnlineReportResource::class)),
             ])->icon('circle-stack')->canSee($anyCanSee([
                 EngineNotifReportResource::class,
                 MteleplusReportResource::class,

@@ -386,11 +386,14 @@ class ElasticsearchService
      */
     private function wicMetricHostFilter(string $hostIp, string $hostHostname): array
     {
+        // host.ip & host.name dipetakan sebagai text di index ini — harus pakai .keyword,
+        // kalau tidak term query gagal match (analyzer text me-lowercase, sedangkan nilai
+        // aslinya bisa uppercase seperti "WICADBDC").
         if ($hostIp !== '') {
-            return ['term' => ['host.ip' => $hostIp]];
+            return ['term' => ['host.ip.keyword' => $hostIp]];
         }
 
-        return ['term' => ['host.name' => $hostHostname]];
+        return ['term' => ['host.name.keyword' => $hostHostname]];
     }
 
     public function queryWicMetricCpu(string $hostIp, string $dateFrom, string $dateTo, string $hostHostname = ''): array
@@ -401,7 +404,7 @@ class ElasticsearchService
                 'bool' => [
                     'filter' => [
                         $this->wicMetricHostFilter($hostIp, $hostHostname),
-                        ['term'  => ['metricset.name' => 'cpu']],
+                        ['term'  => ['metricset.name.keyword' => 'cpu']],
                         ['range' => ['@timestamp'     => ['gte' => $dateFrom . 'T00:00:00.000', 'lte' => $dateTo . 'T23:59:59.999', 'time_zone' => '+07:00']]],
                     ],
                 ],
@@ -428,7 +431,7 @@ class ElasticsearchService
                 'bool' => [
                     'filter' => [
                         $this->wicMetricHostFilter($hostIp, $hostHostname),
-                        ['term'  => ['metricset.name' => 'memory']],
+                        ['term'  => ['metricset.name.keyword' => 'memory']],
                         ['range' => ['@timestamp'     => ['gte' => $dateFrom . 'T00:00:00.000', 'lte' => $dateTo . 'T23:59:59.999', 'time_zone' => '+07:00']]],
                     ],
                 ],
@@ -455,7 +458,7 @@ class ElasticsearchService
                 'bool' => [
                     'filter' => [
                         $this->wicMetricHostFilter($hostIp, $hostHostname),
-                        ['term'  => ['metricset.name' => 'filesystem']],
+                        ['term'  => ['metricset.name.keyword' => 'filesystem']],
                         ['range' => ['@timestamp'     => ['gte' => $dateFrom . 'T00:00:00.000', 'lte' => $dateTo . 'T23:59:59.999', 'time_zone' => '+07:00']]],
                     ],
                 ],

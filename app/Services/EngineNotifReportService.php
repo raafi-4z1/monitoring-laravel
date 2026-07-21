@@ -52,11 +52,13 @@ class EngineNotifReportService
             }
 
             foreach ($allHours as $hourKey) {
-                // hourKey = "2026-07-01 07:00" → simpan sebagai datetime
-                $reportHour = Carbon::createFromFormat('Y-m-d H:i', $hourKey)->format('Y-m-d H:i:s');
+                // hourKey = "2026-07-01 07:00"
+                $dt      = Carbon::createFromFormat('Y-m-d H:i', $hourKey);
+                $trxDate = $dt->format('Y-m-d');
+                $trxHour = (int) $dt->format('H');
 
                 EngineNotifReport::updateOrCreate(
-                    ['report_hour' => $reportHour],
+                    ['trx_date' => $trxDate, 'trx_hour' => $trxHour],
                     [
                         'mvrk_success'      => $mvrkS[$hourKey]      ?? 0,
                         'mvrk_fail'         => $mvrkF[$hourKey]      ?? 0,

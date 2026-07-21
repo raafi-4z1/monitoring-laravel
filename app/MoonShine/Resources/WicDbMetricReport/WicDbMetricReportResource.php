@@ -92,8 +92,8 @@ class WicDbMetricReportResource extends ModelResource implements HasImportExport
     protected function handlers(): ListOf
     {
         return new ListOf(Handler::class, [
-            ExportHandler::make('Export Excel')->alias('export-excel')->filename('wic_db_metric_' . date('Ymd-His')),
-            ExportHandler::make('Export CSV')->alias('export-csv')->csv()->filename('wic_db_metric_' . date('Ymd-His')),
+            ExportHandler::make('Export Excel')->alias('export-excel')->filename('wic_db_metric_' . date('Ymd-His'))->forceSort('trx_date'),
+            ExportHandler::make('Export CSV')->alias('export-csv')->csv()->filename('wic_db_metric_' . date('Ymd-His'))->forceSort('trx_date'),
         ]);
     }
 }

@@ -19,6 +19,19 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class GuardedExportHandler extends ExportHandler
 {
+    protected ?string $forcedSort = null;
+
+    /**
+     * Export selalu terurut sesuai ini, terlepas dari sort yang sedang aktif di tabel
+     * (mis. tabel ditampilkan terbaru dulu, tapi export tetap kronologis 00-23).
+     */
+    public function forceSort(string $column, string $direction = 'asc'): static
+    {
+        $this->forcedSort = ($direction === 'desc' ? '-' : '') . $column;
+
+        return $this;
+    }
+
     public function handle(): Response
     {
         $resource = $this->getResource();
@@ -28,6 +41,10 @@ class GuardedExportHandler extends ExportHandler
             403,
             'Anda tidak memiliki akses ke resource ini.'
         );
+
+        if ($this->forcedSort !== null) {
+            request()->query->set('sort', $this->forcedSort);
+        }
 
         return parent::handle();
     }

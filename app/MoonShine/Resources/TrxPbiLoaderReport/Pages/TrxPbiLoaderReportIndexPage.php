@@ -56,7 +56,7 @@ class TrxPbiLoaderReportIndexPage extends IndexPage
         return [
             Preview::make('Tanggal', 'trx_date')
                 ->changeFill(fn($i) => $i->trx_date?->format('Y-m-d') ?? '-')
-                ->sortable('trx_date'),
+                ->sortable(fn($q, $_c, $d) => $q->orderBy('trx_date', $d)->orderBy('trx_hour', $d)),
             Preview::make('Jam', 'trx_hour')
                 ->changeFill(fn($i) => sprintf('%02d', $i->trx_hour))
                 ->sortable(fn($q, $_c, $d) => $q->orderBy('trx_date', $d)->orderBy('trx_hour', $d)),

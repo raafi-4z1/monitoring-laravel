@@ -99,8 +99,8 @@ class TrxPbiSettlementReportResource extends ModelResource implements HasImportE
     protected function handlers(): ListOf
     {
         return new ListOf(Handler::class, [
-            ExportHandler::make('Export Excel')->alias('export-excel')->filename('trx_pbi_settlement_' . date('Ymd-His')),
-            ExportHandler::make('Export CSV')->alias('export-csv')->csv()->filename('trx_pbi_settlement_' . date('Ymd-His')),
+            ExportHandler::make('Export Excel')->alias('export-excel')->filename('trx_pbi_settlement_' . date('Ymd-His'))->forceSort('trx_date'),
+            ExportHandler::make('Export CSV')->alias('export-csv')->csv()->filename('trx_pbi_settlement_' . date('Ymd-His'))->forceSort('trx_date'),
         ]);
     }
 }

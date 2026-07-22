@@ -91,6 +91,7 @@ class ExportWicMetricCsv extends Command
                                    : ($r->last_pct !== null ? number_format($r->last_pct * 100, 2) : ''),
             'utilization_min_pct' => $r->min_pct  !== null ? number_format($r->min_pct  * 100, 2) : '',
             'utilization_max_pct' => $r->max_pct  !== null ? number_format($r->max_pct  * 100, 2) : '',
+            'utilization_p95_pct' => $r->p95_pct  !== null ? number_format($r->p95_pct  * 100, 2) : '',
         ]);
     }
 }

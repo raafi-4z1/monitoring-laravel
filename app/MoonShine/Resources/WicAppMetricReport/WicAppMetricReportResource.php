@@ -86,6 +86,7 @@ class WicAppMetricReportResource extends ModelResource implements HasImportExpor
             Preview::make('utilization_avg_pct', 'avg_pct')->changeFill(fn($i) => $i->avg_pct !== null ? number_format($i->avg_pct * 100, 2) : ($i->last_pct !== null ? number_format($i->last_pct * 100, 2) : '')),
             Preview::make('utilization_min_pct', 'min_pct')->changeFill(fn($i) => $i->min_pct !== null ? number_format($i->min_pct * 100, 2) : ''),
             Preview::make('utilization_max_pct', 'max_pct')->changeFill(fn($i) => $i->max_pct !== null ? number_format($i->max_pct * 100, 2) : ''),
+            Preview::make('utilization_p95_pct', 'p95_pct')->changeFill(fn($i) => $i->p95_pct !== null ? number_format($i->p95_pct * 100, 2) : ''),
         ];
     }
 

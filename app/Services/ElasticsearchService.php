@@ -416,6 +416,7 @@ class ElasticsearchService
                         'max_pct' => ['max' => ['field' => 'system.cpu.total.norm.pct']],
                         'min_pct' => ['min' => ['field' => 'system.cpu.total.norm.pct']],
                         'avg_pct' => ['avg' => ['field' => 'system.cpu.total.norm.pct']],
+                        'p95_pct' => ['percentiles' => ['field' => 'system.cpu.total.norm.pct', 'percents' => [95]]],
                     ],
                 ],
             ],
@@ -443,6 +444,7 @@ class ElasticsearchService
                         'max_pct' => ['max' => ['field' => 'system.memory.actual.used.pct']],
                         'min_pct' => ['min' => ['field' => 'system.memory.actual.used.pct']],
                         'avg_pct' => ['avg' => ['field' => 'system.memory.actual.used.pct']],
+                        'p95_pct' => ['percentiles' => ['field' => 'system.memory.actual.used.pct', 'percents' => [95]]],
                     ],
                 ],
             ],
@@ -496,8 +498,9 @@ class ElasticsearchService
             $maxPct = $b['max_pct']['value'] ?? null;
             $minPct = $b['min_pct']['value'] ?? null;
             $avgPct = $b['avg_pct']['value'] ?? null;
+            $p95Pct = $b['p95_pct']['values']['95.0'] ?? null;
 
-            if ($maxPct === null && $minPct === null && $avgPct === null) {
+            if ($maxPct === null && $minPct === null && $avgPct === null && $p95Pct === null) {
                 \Illuminate\Support\Facades\Log::warning("WicMetric [cpu/memory]: semua nilai null untuk jam {$hour}, bucket dilewati.", [
                     'doc_count' => $b['doc_count'] ?? 0,
                 ]);
@@ -508,6 +511,7 @@ class ElasticsearchService
                 'max_pct' => $maxPct,
                 'min_pct' => $minPct,
                 'avg_pct' => $avgPct,
+                'p95_pct' => $p95Pct,
             ];
         }
 

@@ -53,7 +53,7 @@ class WicDbMetricReportService
                 [$dateStr2, $hourInt] = explode(' ', $hourKey);
                 WicDbMetricReport::updateOrCreate(
                     ['trx_date' => $dateStr2, 'trx_hour' => (int) $hourInt, 'metric_type' => 'cpu', 'disk_path' => ''],
-                    ['report_source_id' => $sourceId, 'max_pct' => $v['max_pct'], 'min_pct' => $v['min_pct'], 'avg_pct' => $v['avg_pct']]
+                    ['report_source_id' => $sourceId, 'max_pct' => $v['max_pct'], 'min_pct' => $v['min_pct'], 'avg_pct' => $v['avg_pct'], 'p95_pct' => $v['p95_pct']]
                 );
                 $count++;
             }
@@ -62,7 +62,7 @@ class WicDbMetricReportService
                 [$dateStr2, $hourInt] = explode(' ', $hourKey);
                 WicDbMetricReport::updateOrCreate(
                     ['trx_date' => $dateStr2, 'trx_hour' => (int) $hourInt, 'metric_type' => 'memory', 'disk_path' => ''],
-                    ['report_source_id' => $sourceId, 'max_pct' => $v['max_pct'], 'min_pct' => $v['min_pct'], 'avg_pct' => $v['avg_pct']]
+                    ['report_source_id' => $sourceId, 'max_pct' => $v['max_pct'], 'min_pct' => $v['min_pct'], 'avg_pct' => $v['avg_pct'], 'p95_pct' => $v['p95_pct']]
                 );
                 $count++;
             }

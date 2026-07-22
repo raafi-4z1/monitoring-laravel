@@ -72,6 +72,9 @@ class WicDbMetricReportIndexPage extends IndexPage
             Preview::make('Avg %', 'avg_pct')
                 ->changeFill(fn($i) => $i->avg_pct !== null ? number_format($i->avg_pct * 100, 2) . '%' : '-')
                 ->sortable(),
+            Preview::make('P95 %', 'p95_pct')
+                ->changeFill(fn($i) => $i->p95_pct !== null ? number_format($i->p95_pct * 100, 2) . '%' : '-')
+                ->sortable(),
             Preview::make('Last %', 'last_pct')
                 ->changeFill(fn($i) => $i->last_pct !== null ? number_format($i->last_pct * 100, 2) . '%' : '-'),
             Preview::make('Used', 'last_used_bytes')

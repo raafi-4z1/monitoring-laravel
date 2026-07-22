@@ -76,6 +76,10 @@ class WicAppMetricReportService
                         ['trx_date' => $dateStr2, 'trx_hour' => (int) $hourInt, 'metric_type' => 'disk', 'disk_path' => $diskPath],
                         [
                             'report_source_id' => $sourceId,
+                            'max_pct'          => $disk['max_pct'],
+                            'min_pct'          => $disk['min_pct'],
+                            'avg_pct'          => $disk['avg_pct'],
+                            'p95_pct'          => $disk['p95_pct'],
                             'last_pct'         => $disk['last_pct'],
                             'last_used_bytes'  => $disk['last_used_bytes'],
                             'last_total_bytes' => $disk['last_total_bytes'],

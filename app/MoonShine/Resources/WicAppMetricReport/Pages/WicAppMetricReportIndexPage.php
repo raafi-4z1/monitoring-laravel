@@ -228,12 +228,14 @@ class WicAppMetricReportIndexPage extends IndexPage
                     'avg_pct' => $grp->avg('avg_pct'),
                     'max_pct' => $grp->max('max_pct'),
                     'min_pct' => $grp->min('min_pct'),
+                    'p95_pct' => $grp->avg('p95_pct'),
                 ]);
 
                 return [
                     collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl, [])['avg_pct'] ?? 0) * 100, 2)])->toArray(),
                     collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl, [])['max_pct'] ?? 0) * 100, 2)])->toArray(),
                     collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl, [])['min_pct'] ?? 0) * 100, 2)])->toArray(),
+                    collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl, [])['p95_pct'] ?? 0) * 100, 2)])->toArray(),
                 ];
             }
 
@@ -243,11 +245,30 @@ class WicAppMetricReportIndexPage extends IndexPage
                 collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl)?->avg_pct ?? 0) * 100, 2)])->toArray(),
                 collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl)?->max_pct ?? 0) * 100, 2)])->toArray(),
                 collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl)?->min_pct ?? 0) * 100, 2)])->toArray(),
+                collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl)?->p95_pct ?? 0) * 100, 2)])->toArray(),
             ];
         };
 
-        [$cpuAvg, $cpuMax, $cpuMin] = $buildStats($cpuData);
-        [$memAvg, $memMax, $memMin] = $buildStats($memData);
+        // Disk punya beberapa baris per label (satu per disk path), jadi statistik
+        // gabungan selalu di-group per label — tidak bisa pakai keyBy seperti CPU/Memory.
+        $buildGroupedStats = function (Collection $rows, array $labels) use ($label) {
+            $byLabel = $rows->groupBy($label)->map(fn($grp) => [
+                'avg_pct' => $grp->avg('avg_pct'),
+                'max_pct' => $grp->max('max_pct'),
+                'min_pct' => $grp->min('min_pct'),
+                'p95_pct' => $grp->avg('p95_pct'),
+            ]);
+
+            return [
+                collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl, [])['avg_pct'] ?? 0) * 100, 2)])->toArray(),
+                collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl, [])['max_pct'] ?? 0) * 100, 2)])->toArray(),
+                collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl, [])['min_pct'] ?? 0) * 100, 2)])->toArray(),
+                collect($labels)->mapWithKeys(fn($lbl) => [$lbl => round(($byLabel->get($lbl, [])['p95_pct'] ?? 0) * 100, 2)])->toArray(),
+            ];
+        };
+
+        [$cpuAvg, $cpuMax, $cpuMin, $cpuP95] = $buildStats($cpuData);
+        [$memAvg, $memMax, $memMin, $memP95] = $buildStats($memData);
 
         $diskPaths   = $diskData->pluck('disk_path')->unique()->sort()->values();
         $diskColumns = [];
@@ -255,6 +276,15 @@ class WicAppMetricReportIndexPage extends IndexPage
             // Zero-fill: tiap disk_path bisa punya jam yang beda-beda, samakan label
             // sumbu-X across semua path supaya tidak ada series yang tidak selaras.
             $diskLabels = $diskData->map($label)->unique()->values()->all();
+
+            [$diskAvg, $diskMax, $diskMin, $diskP95] = $buildGroupedStats($diskData, $diskLabels);
+            $diskColumns[] = Column::make([
+                LineChartMetric::make("Disk Usage Stats (%) per {$unit} (semua disk)")
+                    ->series(SeriesItem::make('Max', $diskMax)->line())
+                    ->series(SeriesItem::make('Avg', $diskAvg)->line())
+                    ->series(SeriesItem::make('P95', $diskP95)->line())
+                    ->series(SeriesItem::make('Min', $diskMin)->line()),
+            ])->columnSpan(12);
 
             $diskChart = LineChartMetric::make("Disk Usage (%) per {$unit}");
             foreach ($diskPaths as $path) {
@@ -296,6 +326,7 @@ class WicAppMetricReportIndexPage extends IndexPage
                     LineChartMetric::make("CPU (%) per {$unit}")
                         ->series(SeriesItem::make('Max', $cpuMax)->line())
                         ->series(SeriesItem::make('Avg', $cpuAvg)->line())
+                        ->series(SeriesItem::make('P95', $cpuP95)->line())
                         ->series(SeriesItem::make('Min', $cpuMin)->line()),
                 ])->columnSpan(12)
                 : null,
@@ -305,6 +336,7 @@ class WicAppMetricReportIndexPage extends IndexPage
                     LineChartMetric::make("Memory (%) per {$unit}")
                         ->series(SeriesItem::make('Max', $memMax)->line())
                         ->series(SeriesItem::make('Avg', $memAvg)->line())
+                        ->series(SeriesItem::make('P95', $memP95)->line())
                         ->series(SeriesItem::make('Min', $memMin)->line()),
                 ])->columnSpan(12)
                 : null,

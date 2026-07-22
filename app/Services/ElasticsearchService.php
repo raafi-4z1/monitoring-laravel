@@ -480,6 +480,10 @@ class ElasticsearchService
                                         // _source tidak dibatasi agar semua field tersedia
                                     ],
                                 ],
+                                'max_pct' => ['max' => ['field' => 'system.filesystem.used.pct']],
+                                'min_pct' => ['min' => ['field' => 'system.filesystem.used.pct']],
+                                'avg_pct' => ['avg' => ['field' => 'system.filesystem.used.pct']],
+                                'p95_pct' => ['percentiles' => ['field' => 'system.filesystem.used.pct', 'percents' => [95]]],
                             ],
                         ],
                     ],
@@ -562,6 +566,10 @@ class ElasticsearchService
 
                 $parsed[$hour][] = [
                     'disk_path'        => $diskPath,
+                    'max_pct'          => $diskBucket['max_pct']['value'] ?? null,
+                    'min_pct'          => $diskBucket['min_pct']['value'] ?? null,
+                    'avg_pct'          => $diskBucket['avg_pct']['value'] ?? null,
+                    'p95_pct'          => $diskBucket['p95_pct']['values']['95.0'] ?? null,
                     'last_pct'         => $lastPct,
                     'last_used_bytes'  => $lastUsedBytes,
                     'last_total_bytes' => $lastTotalBytes,

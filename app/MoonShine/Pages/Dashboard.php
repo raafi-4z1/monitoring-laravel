@@ -354,7 +354,7 @@ class Dashboard extends Page
 
         $cpuAvg  = $rows->where('metric_type', 'cpu')->avg('avg_pct');
         $memAvg  = $rows->where('metric_type', 'memory')->avg('avg_pct');
-        $diskAvg = $rows->where('metric_type', 'disk')->avg('last_pct');
+        $diskAvg = $rows->where('metric_type', 'disk')->avg('avg_pct');
 
         return Grid::make([
             Column::make([

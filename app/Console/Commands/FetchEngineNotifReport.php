@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\ActivityLogger;
 use App\Services\EngineNotifReportService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -26,10 +27,12 @@ class FetchEngineNotifReport extends Command
 
         if ($success) {
             $this->info('✅ Data berhasil disimpan!');
+            ActivityLogger::logGuest('fetch_scheduled', "Scheduled fetch Engine Notif berhasil untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d')]);
             return Command::SUCCESS;
         }
 
         $this->error('❌ Gagal menyimpan data, cek log untuk detail.');
+        ActivityLogger::logGuest('fetch_scheduled_failed', "Scheduled fetch Engine Notif GAGAL untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d')]);
         return Command::FAILURE;
     }
 }

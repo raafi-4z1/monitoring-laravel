@@ -34,6 +34,10 @@ class ActivityLogIndexPage extends IndexPage
         'delete'                => 'Menghapus',
         'fetch_manual'          => 'Fetch Manual',
         'export'                => 'Export',
+        'fetch_scheduled'       => 'Fetch Terjadwal (Berhasil)',
+        'fetch_scheduled_failed'=> 'Fetch Terjadwal (Gagal)',
+        'export_scheduled'      => 'Export Terjadwal (Berhasil)',
+        'export_scheduled_empty'=> 'Export Terjadwal (Kosong)',
     ];
 
     private const ACTION_COLORS = [
@@ -45,6 +49,10 @@ class ActivityLogIndexPage extends IndexPage
         'delete'                 => '#ef4444',
         'fetch_manual'           => '#3b82f6',
         'export'                 => '#8b5cf6',
+        'fetch_scheduled'        => '#0ea5e9',
+        'fetch_scheduled_failed' => '#dc2626',
+        'export_scheduled'       => '#a855f7',
+        'export_scheduled_empty' => '#9ca3af',
     ];
 
     /**

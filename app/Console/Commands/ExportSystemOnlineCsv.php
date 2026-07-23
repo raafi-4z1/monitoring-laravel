@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Models\ReportSource;
 use App\Models\SystemOnlineReport;
+use App\Services\ActivityLogger;
 use App\Services\SystemOnlineReportService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -46,6 +47,7 @@ class ExportSystemOnlineCsv extends Command
 
         if ($rows->isEmpty()) {
             $this->warn('Tidak ada data System Online untuk tanggal ini.');
+            ActivityLogger::logGuest('export_scheduled_empty', "Scheduled export System Online: tidak ada data untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d')]);
 
             return self::SUCCESS;
         }
@@ -66,6 +68,7 @@ class ExportSystemOnlineCsv extends Command
             'date'  => $date->format('Y-m-d'),
             'total' => $rows->count(),
         ]);
+        ActivityLogger::logGuest('export_scheduled', "Scheduled export System Online berhasil: {$rows->count()} baris untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d'), 'total' => $rows->count(), 'file' => $filename]);
 
         return self::SUCCESS;
     }

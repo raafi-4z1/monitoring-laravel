@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Models\ReportSource;
 use App\Models\WicAppMetricReport;
 use App\Models\WicDbMetricReport;
+use App\Services\ActivityLogger;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -63,12 +64,14 @@ class ExportWicMetricCsv extends Command
 
         if ($rows->isEmpty()) {
             $this->warn('Tidak ada data WIC Metric untuk tanggal ini.');
+            ActivityLogger::logGuest('export_scheduled_empty', "Scheduled export WIC Metric: tidak ada data untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d')]);
             return self::SUCCESS;
         }
 
         (new FastExcel($rows))->configureCsv()->export($filename);
 
         $this->info("CSV berhasil dibuat: {$filename} ({$rows->count()} baris)");
+        ActivityLogger::logGuest('export_scheduled', "Scheduled export WIC Metric berhasil: {$rows->count()} baris untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d'), 'total' => $rows->count(), 'file' => $filename]);
         return self::SUCCESS;
     }
 

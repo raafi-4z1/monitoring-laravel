@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Services\ActivityLogger;
 use App\Services\TrxPbiSettlementReportService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -23,8 +24,10 @@ class FetchTrxPbiSettlementReport extends Command
 
         if ($ok) {
             $this->info('Berhasil disimpan.');
+            ActivityLogger::logGuest('fetch_scheduled', "Scheduled fetch TrxPBI Settlement berhasil untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d')]);
         } else {
             $this->warn('Tidak ada data atau gagal.');
+            ActivityLogger::logGuest('fetch_scheduled_failed', "Scheduled fetch TrxPBI Settlement gagal/tidak ada data untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d')]);
         }
 
         return self::SUCCESS;

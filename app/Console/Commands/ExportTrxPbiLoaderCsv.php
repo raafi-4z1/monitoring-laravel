@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Models\ReportSource;
 use App\Models\TrxPbiLoaderReport;
+use App\Services\ActivityLogger;
 use App\Services\TrxPbiLoaderReportService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -46,6 +47,7 @@ class ExportTrxPbiLoaderCsv extends Command
 
         if ($rows->isEmpty()) {
             $this->warn('Tidak ada data TrxPBI Loader untuk tanggal ini.');
+            ActivityLogger::logGuest('export_scheduled_empty', "Scheduled export TrxPBI Loader: tidak ada data untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d')]);
 
             return self::SUCCESS;
         }
@@ -66,6 +68,7 @@ class ExportTrxPbiLoaderCsv extends Command
             'date'  => $date->format('Y-m-d'),
             'total' => $rows->count(),
         ]);
+        ActivityLogger::logGuest('export_scheduled', "Scheduled export TrxPBI Loader berhasil: {$rows->count()} baris untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d'), 'total' => $rows->count(), 'file' => $filename]);
 
         return self::SUCCESS;
     }

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\ActivityLogger;
 use App\Services\MteleplusReportService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -34,8 +35,10 @@ class FetchMteleplusReport extends Command
 
         if ($ok) {
             $this->info('Berhasil disimpan.');
+            ActivityLogger::logGuest('fetch_scheduled', "Scheduled fetch Mteleplus berhasil untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d')]);
         } else {
             $this->warn('Tidak ada data atau gagal.');
+            ActivityLogger::logGuest('fetch_scheduled_failed', "Scheduled fetch Mteleplus gagal/tidak ada data untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d')]);
         }
 
         return self::SUCCESS;

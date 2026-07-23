@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Models\ReportSource;
 use App\Models\TrxPbiLimitReport;
 use App\Models\TrxPbiSettlementReport;
+use App\Services\ActivityLogger;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -51,6 +52,12 @@ class ExportTrxPbiCsv extends Command
         $this->info("  {$total} baris (limit: {$limitRows->count()}, settlement: {$settlementRows->count()}) → {$filename}");
         $this->info('Export selesai.');
         Log::channel('daily')->info('report:export-trx-pbi-csv selesai', ['date' => $date->format('Y-m-d'), 'total' => $total]);
+
+        if ($total > 0) {
+            ActivityLogger::logGuest('export_scheduled', "Scheduled export TrxPBI berhasil: {$total} baris untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d'), 'total' => $total, 'file' => $filename]);
+        } else {
+            ActivityLogger::logGuest('export_scheduled_empty', "Scheduled export TrxPBI: tidak ada data untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d')]);
+        }
 
         return self::SUCCESS;
     }

@@ -209,6 +209,8 @@ Untuk mengakses dari perangkat lain dalam satu jaringan (mis. via Laragon), perl
 
 Scheduler didefinisikan di `routes/console.php`, menjalankan fetch data dari Elasticsearch setiap hari secara otomatis, lalu auto-export CSV setelah fetch tertentu selesai.
 
+Setiap fetch dan export terjadwal mencatat hasilnya (berhasil / gagal / tidak ada data) ke **Activity Log**, jadi keberhasilan scheduler bisa dipantau langsung dari admin panel tanpa harus membuka file log di server.
+
 Alur harian (ringkas):
 
 | Waktu | Aksi |

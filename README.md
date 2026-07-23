@@ -224,25 +224,34 @@ Alur harian (ringkas):
 | Dini hari | Fetch TrxPBI Loader → **auto export** TrxPBI Loader CSV |
 | Dini hari | Fetch System Online → **auto export** System Online CSV |
 
-File CSV disimpan di folder yang dikonfigurasi di `.env` (`TRX_PBI_EXPORT_PATH` / `WIC_METRIC_EXPORT_PATH` / `TRX_PBI_LOADER_EXPORT_PATH` / `SYSTEM_ONLINE_EXPORT_PATH`), terstruktur per tahun/bulan/tanggal. Nama file dibedakan lewat `kode_prefix` di tabel `report_sources` (mis. `BP` untuk TrxPBI, `SPB` untuk TrxPBI Loader, `SPI` untuk WIC Metric, `SPO` untuk System Online), sehingga aman berdampingan dalam satu folder.
+File CSV disimpan di folder yang dikonfigurasi di `.env` (`TRX_PBI_EXPORT_PATH` / `WIC_METRIC_EXPORT_PATH` / `TRX_PBI_LOADER_EXPORT_PATH` / `SYSTEM_ONLINE_EXPORT_PATH`, dipetakan di `config/exports.php`; dikosongkan berarti memakai `storage/app/exports`), terstruktur per tahun/bulan/tanggal. Nama file dibedakan lewat `kode_prefix` di tabel `report_sources` (mis. `BP` untuk TrxPBI, `SPB` untuk TrxPBI Loader, `SPI` untuk WIC Metric, `SPO` untuk System Online), sehingga aman berdampingan dalam satu folder.
 
 ### Menjalankan Scheduler
 
-**Development — Terminal (polling tiap menit):**
+**Development — jalankan di terminal (polling tiap menit):**
 
 ```bash
 php artisan schedule:work
 ```
 
-**Windows — Windows Task Scheduler:**
+Terminal harus tetap terbuka selama dipakai.
 
-Jadwalkan `php artisan schedule:run` berjalan tiap menit dari direktori project.
+**Production — Windows Task Scheduler:**
 
-**Production (Linux) — Crontab:**
+Buat satu task yang menjalankan `php artisan schedule:run` **setiap menit**. Laravel sendiri yang menentukan command mana yang waktunya tiba, jadi cukup satu task untuk seluruh jadwal.
 
-```bash
-* * * * * cd /var/www/monitoring-laravel && php artisan schedule:run >> /dev/null 2>&1
-```
+| Pengaturan | Nilai |
+|---|---|
+| Program/script | path lengkap ke `php.exe` (mis. `C:\laragon\bin\php\php-8.2.31-nts-Win32-vs16-x64\php.exe`) |
+| Add arguments | `artisan schedule:run` |
+| Start in | folder root project — **wajib diisi**, kalau kosong Laravel tidak menemukan `.env` |
+| Trigger | Daily, ulangi tiap **1 menit** selama **indefinitely** |
+| Run whether user is logged on or not | dicentang, supaya tetap jalan tanpa ada yang login |
+| Akun | user yang punya izin tulis ke folder export dan ke `storage/` |
+
+Hal yang paling sering bikin gagal: *Start in* dikosongkan, atau task dijalankan dengan akun yang tidak punya akses ke folder tujuan export (mis. folder OneDrive milik user lain).
+
+Untuk memastikan scheduler benar-benar jalan, cek menu **Manajemen → Activity Log** dan filter aksi *Fetch Terjadwal* / *Export Terjadwal* — hasil tiap jadwal tercatat di sana tanpa perlu membuka file log di server.
 
 ---
 

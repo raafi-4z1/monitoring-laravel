@@ -28,7 +28,7 @@ class ExportTrxPbiCsv extends Command
 
         $this->info("Export TrxPBI CSV untuk: {$date->format('Y-m-d')}");
 
-        $base = env('TRX_PBI_EXPORT_PATH', storage_path('app/exports'));
+        $base = config('exports.trx_pbi');
         $dir  = $base . DIRECTORY_SEPARATOR . $date->format('Y') . DIRECTORY_SEPARATOR . $date->format('m') . DIRECTORY_SEPARATOR . $date->format('d');
 
         if (! is_dir($dir)) {

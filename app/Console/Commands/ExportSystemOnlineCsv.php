@@ -28,7 +28,7 @@ class ExportSystemOnlineCsv extends Command
 
         $this->info("Export System Online CSV untuk: {$date->format('Y-m-d')}");
 
-        $base = env('SYSTEM_ONLINE_EXPORT_PATH', storage_path('app/exports'));
+        $base = config('exports.system_online');
         $dir  = $base
             . DIRECTORY_SEPARATOR . $date->format('Y')
             . DIRECTORY_SEPARATOR . $date->format('m')

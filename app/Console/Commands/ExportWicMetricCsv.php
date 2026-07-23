@@ -28,7 +28,7 @@ class ExportWicMetricCsv extends Command
 
         $this->info("Export WIC Metric CSV untuk: {$date->format('Y-m-d')}");
 
-        $base = env('WIC_METRIC_EXPORT_PATH', storage_path('app/exports'));
+        $base = config('exports.wic_metric');
         $dir  = $base
             . DIRECTORY_SEPARATOR . $date->format('Y')
             . DIRECTORY_SEPARATOR . $date->format('m')

@@ -18,7 +18,7 @@ class ResourcePermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('resource_permissions')->upsert(
+        DB::table('resource_permissions')->insertOrIgnore(
             [
                 ['resource_class' => EngineNotifReportResource::class,      'label' => 'Engine Notif Report',      'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => MteleplusReportResource::class,        'label' => 'Mteleplus Report',         'created_at' => now(), 'updated_at' => now()],
@@ -30,8 +30,6 @@ class ResourcePermissionSeeder extends Seeder
                 ['resource_class' => WicDbMetricReportResource::class,      'label' => 'WIC DB Metric',            'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => WicAppMetricReportResource::class,     'label' => 'WIC APP Metric',           'created_at' => now(), 'updated_at' => now()],
             ],
-            ['resource_class'],
-            ['label', 'updated_at']
         );
     }
 }

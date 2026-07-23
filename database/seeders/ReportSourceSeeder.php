@@ -9,7 +9,7 @@ class ReportSourceSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('report_sources')->upsert(
+        DB::table('report_sources')->insertOrIgnore(
             [
                 [
                     'service_name'       => 'trx_pbi_limit',
@@ -74,8 +74,6 @@ class ReportSourceSeeder extends Seeder
                     'updated_at'         => now(),
                 ],
             ],
-            ['service_name'],
-            ['app_id', 'data_source', 'data_source_name', 'service_integrator', 'host_ip', 'kode_prefix', 'updated_at']
         );
     }
 }

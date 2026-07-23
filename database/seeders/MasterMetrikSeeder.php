@@ -11,7 +11,7 @@ class MasterMetrikSeeder extends Seeder
     {
         $now = now();
 
-        DB::table('master_metrik')->upsert(
+        DB::table('master_metrik')->insertOrIgnore(
             [
                 ['nama' => 'CPU',           'satuan_default' => '%',    'keterangan' => 'CPU Usage',               'created_at' => $now, 'updated_at' => $now],
                 ['nama' => 'MEMORY',        'satuan_default' => '%',    'keterangan' => 'Memory Usage',            'created_at' => $now, 'updated_at' => $now],
@@ -23,8 +23,6 @@ class MasterMetrikSeeder extends Seeder
                 ['nama' => 'LOAD_15M',      'satuan_default' => '-',    'keterangan' => 'Load Average (15 menit)','created_at' => $now, 'updated_at' => $now],
                 ['nama' => 'RESPONSE_TIME', 'satuan_default' => 'ms',   'keterangan' => 'Response Time',          'created_at' => $now, 'updated_at' => $now],
             ],
-            ['nama'],
-            ['satuan_default', 'keterangan', 'updated_at']
         );
     }
 }

@@ -178,6 +178,8 @@ php artisan migrate --seed
 
 Perintah `--seed` akan mengisi data awal: metrik default (CPU, MEMORY, DISK, dll.), konfigurasi report source, dan daftar resource yang bisa diatur per role.
 
+Seeder bersifat **insert-only** dan aman dijalankan ulang: baris yang sudah ada di database tidak akan ditimpa, hanya entri baru yang ditambahkan. Jadi perubahan yang sudah dilakukan lewat admin panel (mis. satuan di Master Metrik atau metadata di Report Sources) tidak akan kembali ke nilai default. Konsekuensinya, mengubah nilai baris yang sudah ada harus lewat admin panel atau migration — bukan dengan menjalankan ulang seeder.
+
 ### 5. Buat Admin Panel
 
 ```bash

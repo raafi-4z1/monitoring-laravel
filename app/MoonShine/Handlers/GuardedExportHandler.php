@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\MoonShine\Handlers;
 
 use App\Providers\MoonShineServiceProvider;
+use App\Services\ActivityLogger;
 use MoonShine\ImportExport\ExportHandler;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -45,6 +46,17 @@ class GuardedExportHandler extends ExportHandler
         if ($this->forcedSort !== null) {
             request()->query->set('sort', $this->forcedSort);
         }
+
+        ActivityLogger::log(
+            'export',
+            "Export {$this->getLabel()}: {$resource->getTitle()}",
+            null,
+            [
+                'resource' => $resource::class,
+                'format'   => $this->isCsv() ? 'csv' : 'xlsx',
+                'filter'   => request()->input('filter', []),
+            ]
+        );
 
         return parent::handle();
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Layouts;
 
+use App\MoonShine\Resources\ActivityLog\ActivityLogResource;
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\MasterAplikasi\MasterAplikasiResource;
@@ -67,6 +68,7 @@ final class MoonShineLayout extends AppLayout
                 MenuItem::make(MoonShineUserResource::class)->icon('users'),
                 MenuItem::make(MoonShineUserRoleResource::class)->icon('shield-check'),
                 MenuItem::make(RolePermissionsPage::class, 'Hak Akses Role')->icon('lock-closed'),
+                MenuItem::make(ActivityLogResource::class, 'Activity Log')->icon('clipboard-document-list'),
             ])->icon('cog-6-tooth')->canSee($isAdmin),
 
             // App Metric — sesuai permission role; master hanya admin

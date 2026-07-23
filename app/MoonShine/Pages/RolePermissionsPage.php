@@ -6,6 +6,7 @@ namespace App\MoonShine\Pages;
 
 use App\Models\ResourcePermission;
 use App\Providers\MoonShineServiceProvider;
+use App\Services\ActivityLogger;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use MoonShine\Contracts\UI\ComponentContract;
@@ -360,6 +361,11 @@ class RolePermissionsPage extends Page
 
         MoonShineServiceProvider::forgetManageableResourcesCache();
 
+        ActivityLogger::log('create', "Menambahkan resource yang bisa diatur: {$label}", null, [
+            'resource_class' => $resourceClass,
+            'label'          => $label,
+        ]);
+
         session()->flash('resource_manage_alert', ['type' => 'success', 'message' => 'Resource berhasil ditambahkan.']);
 
         return JsonResponse::make()->redirect($this->getRoute());
@@ -371,10 +377,18 @@ class RolePermissionsPage extends Page
         abort_unless($this->isAuthorized(), 403, 'Anda tidak memiliki akses untuk melakukan aksi ini.');
 
         $resourceId = (int) request()->input('resource_id');
+        $resource   = ResourcePermission::find($resourceId);
 
         ResourcePermission::whereKey($resourceId)->delete();
 
         MoonShineServiceProvider::forgetManageableResourcesCache();
+
+        if ($resource !== null) {
+            ActivityLogger::log('delete', "Menghapus resource yang bisa diatur: {$resource->label}", null, [
+                'resource_class' => $resource->resource_class,
+                'label'          => $resource->label,
+            ]);
+        }
 
         session()->flash('resource_manage_alert', ['type' => 'success', 'message' => 'Resource berhasil dihapus.']);
 
@@ -388,14 +402,27 @@ class RolePermissionsPage extends Page
 
         $input   = request()->input('permissions', []);
         $allowed = ResourcePermission::pluck('resource_class')->all();
-        $roleIds = MoonshineUserRole::where('id', '!=', MoonshineUserRole::DEFAULT_ROLE_ID)->pluck('id');
+        $roles   = MoonshineUserRole::where('id', '!=', MoonshineUserRole::DEFAULT_ROLE_ID)->get(['id', 'name', 'permissions']);
 
-        foreach ($roleIds as $roleId) {
-            $selected = array_values(array_intersect($input[$roleId] ?? [], $allowed));
+        foreach ($roles as $role) {
+            $selected = array_values(array_intersect($input[$role->id] ?? [], $allowed));
+            $before   = $this->decodePermissions($role->permissions);
 
             DB::table('moonshine_user_roles')
-                ->where('id', $roleId)
+                ->where('id', $role->id)
                 ->update(['permissions' => empty($selected) ? null : json_encode($selected)]);
+
+            $beforeSorted = $before;
+            $afterSorted  = $selected;
+            sort($beforeSorted);
+            sort($afterSorted);
+
+            if ($beforeSorted !== $afterSorted) {
+                ActivityLogger::log('update', "Mengubah hak akses role: {$role->name}", $role, [
+                    'before' => $before,
+                    'after'  => $selected,
+                ]);
+            }
         }
 
         toast('Hak akses role berhasil disimpan.', ToastType::SUCCESS);

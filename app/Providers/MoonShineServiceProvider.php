@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\MoonShine\Resources\ActivityLog\ActivityLogResource;
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\EngineNotifReport\Pages\EngineNotifReportFetchPage;
@@ -45,6 +46,7 @@ class MoonShineServiceProvider extends ServiceProvider
         MasterAplikasiResource::class,
         MasterMetrikResource::class,
         ReportSourceResource::class,
+        ActivityLogResource::class,
     ];
 
     private const MANAGEABLE_RESOURCES_CACHE_KEY = 'resource_permissions.manageable_classes';
@@ -129,6 +131,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 ReportSourceResource::class,
                 WicDbMetricReportResource::class,
                 WicAppMetricReportResource::class,
+                ActivityLogResource::class,
             ])
             ->pages([
                 ...$core->getConfig()->getPages(),

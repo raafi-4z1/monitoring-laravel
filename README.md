@@ -30,6 +30,7 @@ Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang menginteg
 - **Auto Export CSV TrxPBI Loader** — setelah fetch TrxPBI Loader selesai, data batch job kemarin diekspor otomatis ke CSV
 - **Auto Export CSV System Online** — setelah fetch System Online selesai, data response time kemarin diekspor otomatis ke CSV
 - **Role-based Access (Dinamis)** — Admin selalu akses penuh; role lain diatur per-resource lewat halaman Hak Akses Role (checkbox matrix, tersimpan di database, default tertutup)
+- **Activity Log (Audit Trail)** — mencatat aktivitas user beserta alamat IP: login, logout, percobaan login gagal, CRUD user/role/master data/report source, perubahan hak akses role, fetch manual, dan export. Read-only, khusus Admin
 
 ---
 
@@ -311,7 +312,7 @@ Sistem role bersifat dinamis, dikelola dari database — bukan hardcode.
   - Tab **Kelola Resource** — daftar resource yang bisa diatur per role, bisa tambah/hapus dari resource yang tersedia.
   - Tab **Atur Akses per Role** — matrix checkbox Role × Resource. Ada checkbox "select all" per baris (role) dan per kolom (resource).
 - **Default tertutup**: resource yang belum ditambahkan ke "Kelola Resource", atau role yang belum dicentang untuk suatu resource, otomatis **tidak dapat diakses** (fail-closed) — kecuali oleh Admin.
-- Resource sistem (Users, Roles, Master Aplikasi, Master Metrik, Report Sources) selalu admin-only secara permanen, tidak bisa dipindah ke role lain.
+- Resource sistem (Users, Roles, Master Aplikasi, Master Metrik, Report Sources, Activity Log) selalu admin-only secara permanen, tidak bisa dipindah ke role lain.
 - Menu sidebar, halaman resource, halaman Fetch Manual, export Excel/CSV, dan Dashboard semuanya mengikuti permission yang sama secara otomatis — tidak perlu ubah kode saat admin mengubah permission dari UI.
 - Permission ditegakkan di level middleware (bukan cuma tampilan menu), jadi resource yang tidak diizinkan tetap tidak bisa diakses walau URL diketik langsung. File hasil export juga disimpan di storage privat (tidak bisa diunduh langsung tanpa login).
 
@@ -326,6 +327,8 @@ Sistem role bersifat dinamis, dikelola dari database — bukan hardcode.
 **Roles** — kelola daftar role
 
 **Hak Akses Role** — atur resource apa saja yang bisa diakses tiap role (lihat bagian Role Panel & Hak Akses)
+
+**Activity Log** — jejak audit aktivitas user: waktu, nama user, alamat IP, jenis aksi, dan deskripsi. Bisa difilter per tanggal / jenis aksi / user, serta diekspor ke Excel/CSV. Bersifat read-only (tidak bisa dibuat, diubah, atau dihapus dari panel) supaya jejaknya tidak bisa dimanipulasi dari UI. Nilai sensitif seperti password dan token tidak ikut disimpan.
 
 ### Menu: App Metric
 

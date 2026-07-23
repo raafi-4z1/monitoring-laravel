@@ -174,6 +174,7 @@ class WicAppMetricReportFetchPage extends FormPage
             }
 
             $total   = $success + $failed;
+            $this->logFetchManual($dateFrom, $dateTo, $success, $failed);
             $message = "✅ Selesai fetch <strong>{$total} hari</strong> "
                 . "({$dateFrom} s/d {$dateTo}): "
                 . "<strong>{$success} berhasil</strong>"

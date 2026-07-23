@@ -10,6 +10,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\MoonShine\Auth\ThrottleLoginByIp;
 use App\MoonShine\Middleware\GuardResourcePermission;
 use MoonShine\ColorManager\Palettes\PurplePalette;
 use MoonShine\Crud\Forms\FiltersForm;
@@ -80,7 +81,11 @@ return [
         'middleware' => [
             Authenticate::class,
         ],
-        'pipelines' => [],
+        // Dijalankan sebelum kredensial diperiksa. ThrottleLoginByIp menutup celah password
+        // spraying yang tidak tertangkap throttle bawaan MoonShine (yang dikunci per username).
+        'pipelines' => [
+            ThrottleLoginByIp::class,
+        ],
     ],
 
     // Authentication and profile

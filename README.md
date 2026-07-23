@@ -318,6 +318,17 @@ Sistem role bersifat dinamis, dikelola dari database — bukan hardcode.
 - Menu sidebar, halaman resource, halaman Fetch Manual, export Excel/CSV, dan Dashboard semuanya mengikuti permission yang sama secara otomatis — tidak perlu ubah kode saat admin mengubah permission dari UI.
 - Permission ditegakkan di level middleware (bukan cuma tampilan menu), jadi resource yang tidak diizinkan tetap tidak bisa diakses walau URL diketik langsung. File hasil export juga disimpan di storage privat (tidak bisa diunduh langsung tanpa login).
 
+### Pembatasan Percobaan Login
+
+Ada dua lapis, yang paling ketat yang berlaku:
+
+- **Per akun** (bawaan MoonShine) — 5 percobaan gagal per menit untuk kombinasi username + IP.
+- **Per alamat IP** — 10 percobaan gagal per 6 menit, berapa pun jumlah akun yang dicoba. Lapis ini menutup *password spraying*, yaitu mencoba banyak akun berbeda dari satu sumber sehingga batas per-akun tidak pernah tersentuh.
+
+Hitungan per-IP hanya menghitung percobaan yang gagal dan langsung direset begitu ada login berhasil dari IP tersebut, jadi user sah yang salah ketik tidak ikut terkunci. Ambangnya diatur lewat konstanta di `app/Services/LoginIpThrottle.php`. Akun yang terkunci dan IP yang diblokir ikut tercatat di Activity Log.
+
+> **Catatan saat deploy di belakang reverse proxy** (mis. setup HTTPS via web server): daftarkan `trustProxies` di `bootstrap/app.php`. Tanpa itu semua request terlihat berasal dari IP proxy, sehingga kuota per-IP jadi dibagi oleh seluruh user dan satu orang yang salah ketik berulang bisa mengunci semua orang.
+
 ---
 
 ## Halaman Admin Panel

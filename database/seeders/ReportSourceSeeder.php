@@ -73,6 +73,16 @@ class ReportSourceSeeder extends Seeder
                     'created_at'         => now(),
                     'updated_at'         => now(),
                 ],
+                [
+                    'service_name'       => 'engine_notif',
+                    'app_id'             => 'AFO',
+                    'data_source'        => 'ELK',
+                    'data_source_name'   => 'enginenotif-ttrx-*',
+                    'service_integrator' => 'Engine Notif',
+                    'kode_prefix'        => null,
+                    'created_at'         => now(),
+                    'updated_at'         => now(),
+                ],
             ],
         );
     }

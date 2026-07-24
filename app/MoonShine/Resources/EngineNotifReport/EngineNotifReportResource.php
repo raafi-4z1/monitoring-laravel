@@ -83,6 +83,9 @@ class EngineNotifReportResource extends ModelResource implements HasImportExport
     protected function exportFields(): iterable
     {
         return [
+            Preview::make('app_id',           'id')->changeFill(fn($item) => $item->reportSource?->app_id ?? ''),
+            Preview::make('data_source',      'id')->changeFill(fn($item) => $item->reportSource?->data_source ?? ''),
+            Preview::make('data_source_name', 'id')->changeFill(fn($item) => $item->reportSource?->data_source_name ?? ''),
             Preview::make('trx_date', 'trx_date')->changeFill(fn($item) => $item->trx_date?->format('Y-m-d') ?? ''),
             Preview::make('trx_hour', 'trx_hour')->changeFill(fn($item) => sprintf('%02d', $item->trx_hour)),
             Number::make('MVRK Success',  'mvrk_success'),

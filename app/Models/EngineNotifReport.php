@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EngineNotifReport extends Model
 {
     protected $table = 'engine_notif_reports';
 
     protected $fillable = [
+        'report_source_id',
         'trx_date',
         'trx_hour',
         'mvrk_success',
@@ -23,9 +25,17 @@ class EngineNotifReport extends Model
     ];
 
     protected $casts = [
-        'trx_date' => 'date',
-        'trx_hour' => 'integer',
+        'trx_date'         => 'date',
+        'trx_hour'         => 'integer',
+        'report_source_id' => 'integer',
     ];
+
+    protected $with = ['reportSource'];
+
+    public function reportSource(): BelongsTo
+    {
+        return $this->belongsTo(ReportSource::class);
+    }
 
     protected function mvrkTotal(): Attribute
     {

@@ -3,18 +3,30 @@
 namespace App\Services;
 
 use App\Models\EngineNotifReport;
+use App\Models\ReportSource;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class EngineNotifReportService
 {
+    public const SERVICE_NAME = 'engine_notif';
+
     public function __construct(
         protected ElasticsearchService $es
     ) {}
 
     public function fetchAndStore(Carbon $date): bool
     {
-        $dateStr = $date->format('Y-m-d');
+        $dateStr  = $date->format('Y-m-d');
+        $sourceId = ReportSource::where('service_name', self::SERVICE_NAME)->value('id');
+
+        if ($sourceId === null) {
+            Log::channel('daily')->warning(
+                "EngineNotifReportService: report_source dengan service_name '" . self::SERVICE_NAME . "' tidak ditemukan. "
+                . 'Data akan tersimpan dengan report_source_id NULL (app_id, data_source akan kosong di export). '
+                . 'Cek tabel report_sources — kemungkinan service_name berubah/terhapus.'
+            );
+        }
 
         try {
             [$mvrkS, $mvrkF]   = $this->es->parseStatusBuckets(
@@ -60,6 +72,7 @@ class EngineNotifReportService
                 EngineNotifReport::updateOrCreate(
                     ['trx_date' => $trxDate, 'trx_hour' => $trxHour],
                     [
+                        'report_source_id'  => $sourceId,
                         'mvrk_success'      => $mvrkS[$hourKey]      ?? 0,
                         'mvrk_fail'         => $mvrkF[$hourKey]      ?? 0,
                         'sms_success'       => $smsS[$hourKey]       ?? 0,

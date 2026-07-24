@@ -15,7 +15,6 @@ use MoonShine\ImportExport\Traits\ImportExportConcern;
 use MoonShine\Laravel\Resources\ModelResource;
 use MoonShine\Support\Enums\Action;
 use MoonShine\Support\ListOf;
-use MoonShine\UI\Fields\Date;
 use MoonShine\UI\Fields\Number;
 use MoonShine\Support\Enums\PageType;
 use MoonShine\UI\Fields\Preview;
@@ -28,11 +27,11 @@ class MteleplusReportResource extends ModelResource implements HasImportExportCo
     use ImportExportConcern;
 
     protected string $model = MteleplusReport::class;
-    protected string $column = 'report_hour';
+    protected string $column = 'trx_date';
     protected string $title = 'Mteleplus Reports';
 
-    protected string $sortColumn = 'report_hour';
-    protected int $itemsPerPage = 10;
+    protected string $sortColumn = 'trx_date';
+    protected int $itemsPerPage = 25;
     protected bool $usePagination = true;
     protected ?PageType $redirectAfterSave = PageType::INDEX;
 
@@ -46,7 +45,7 @@ class MteleplusReportResource extends ModelResource implements HasImportExportCo
     public function getItemsPerPage(): int
     {
         $default = $this->itemsPerPage;
-        $value   = (int) (session()?->get('perPage') ?? $default);
+        $value   = (int) (session()?->get('mteleplusPerPage') ?? $default);
 
         if (! in_array($value, $this->perPageValues())) {
             return $default;
@@ -58,11 +57,10 @@ class MteleplusReportResource extends ModelResource implements HasImportExportCo
     public function perPageValues(): array
     {
         return [
-            5  => 5,
-            10 => 10,
-            20 => 20,
+            25 => 25,
             50 => 50,
             100 => 100,
+            200 => 200,
         ];
     }
     
@@ -85,7 +83,11 @@ class MteleplusReportResource extends ModelResource implements HasImportExportCo
     protected function exportFields(): iterable
     {
         return [
-            Date::make('Jam', 'report_hour')->withTime()->format('Y-m-d H:i'),
+            Preview::make('app_id',           'id')->changeFill(fn($item) => $item->reportSource?->app_id ?? ''),
+            Preview::make('data_source',      'id')->changeFill(fn($item) => $item->reportSource?->data_source ?? ''),
+            Preview::make('data_source_name', 'id')->changeFill(fn($item) => $item->reportSource?->data_source_name ?? ''),
+            Preview::make('trx_date', 'trx_date')->changeFill(fn($item) => $item->trx_date?->format('Y-m-d') ?? ''),
+            Preview::make('trx_hour', 'trx_hour')->changeFill(fn($item) => sprintf('%02d', $item->trx_hour)),
             Number::make('AKT Success',    'akt_success'),
             Number::make('AKT Fail',       'akt_fail'),
             Preview::make('AKT Total',     'akt_total'),
@@ -102,8 +104,8 @@ class MteleplusReportResource extends ModelResource implements HasImportExportCo
     protected function handlers(): ListOf
     {
         return new ListOf(Handler::class, [
-            ExportHandler::make('Export Excel')->alias('export-excel')->filename('mteleplus_' . date('Ymd-His')),
-            ExportHandler::make('Export CSV')->alias('export-csv')->csv()->filename('mteleplus_' . date('Ymd-His')),
+            ExportHandler::make('Export Excel')->alias('export-excel')->filename('mteleplus_' . date('Ymd-His'))->forceSort('trx_date'),
+            ExportHandler::make('Export CSV')->alias('export-csv')->csv()->filename('mteleplus_' . date('Ymd-His'))->forceSort('trx_date'),
         ]);
     }
 }

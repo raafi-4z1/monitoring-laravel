@@ -130,10 +130,7 @@ class Dashboard extends Page
     private function mteleplusSection(Carbon $date): Grid
     {
         $dateStr = $date->format('Y-m-d');
-        $rows    = MteleplusReport::whereBetween('report_hour', [
-            $dateStr . ' 00:00:00',
-            $dateStr . ' 23:59:59',
-        ])->get();
+        $rows    = MteleplusReport::where('trx_date', $dateStr)->get();
 
         if ($rows->isEmpty()) {
             return Grid::make([

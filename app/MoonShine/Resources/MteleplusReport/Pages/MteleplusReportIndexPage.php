@@ -31,7 +31,6 @@ use MoonShine\UI\Components\Layout\Divider;
 use MoonShine\UI\Components\Layout\Grid;
 use MoonShine\UI\Components\Metrics\Wrapped\ValueMetric;
 use MoonShine\UI\Components\Table\TableBuilder;
-use MoonShine\UI\Fields\Date;
 use MoonShine\UI\Fields\DateRange;
 use MoonShine\UI\Fields\Number;
 use MoonShine\UI\Fields\Preview;
@@ -61,10 +60,12 @@ class MteleplusReportIndexPage extends IndexPage
     protected function fields(): iterable
     {
         return [
-            Date::make('Jam', 'report_hour')
-                ->withTime()
-                ->format('Y-m-d H:i')
-                ->sortable(),
+            Preview::make('Tanggal', 'trx_date')
+                ->changeFill(fn($i) => $i->trx_date?->format('Y-m-d') ?? '-')
+                ->sortable(fn($q, $_c, $d) => $q->orderBy('trx_date', $d)->orderBy('trx_hour', $d)),
+            Preview::make('Jam', 'trx_hour')
+                ->changeFill(fn($i) => sprintf('%02d:00', $i->trx_hour))
+                ->sortable(fn($q, $_c, $d) => $q->orderBy('trx_date', $d)->orderBy('trx_hour', $d)),
             Number::make('AKT Success',  'akt_success')->sortable(),
             Number::make('AKT Fail',     'akt_fail')->sortable(),
             Preview::make('AKT Total',   'akt_total')
@@ -102,7 +103,7 @@ class MteleplusReportIndexPage extends IndexPage
     protected function filters(): iterable
     {
         return [
-            DateRange::make('Tanggal', 'report_hour'),
+            DateRange::make('Tanggal', 'trx_date'),
         ];
     }
 
@@ -198,11 +199,11 @@ class MteleplusReportIndexPage extends IndexPage
 
     protected function lastUpdateAlert(): Alert
     {
-        $latest = MteleplusReport::latest('report_hour')->first();
+        $latest = MteleplusReport::latest('trx_date')->latest('trx_hour')->first();
 
         return $latest
             ? Alert::make(type: 'info')
-                ->content("Data terakhir: <strong>{$latest->report_hour->format('d M Y H:i')}</strong> — diupdate: {$latest->updated_at->format('d M Y H:i')}")
+                ->content("Data terakhir: <strong>{$latest->trx_date->format('d M Y')} " . sprintf('%02d', $latest->trx_hour) . ":00</strong> — diupdate: {$latest->updated_at->format('d M Y H:i')}")
             : Alert::make(type: 'warning')
                 ->content('Belum ada data. Gunakan Fetch Manual.');
     }
@@ -212,16 +213,16 @@ class MteleplusReportIndexPage extends IndexPage
      */
     private function getFilteredData(): array
     {
-        $fromInput = request()->input('_data.filter.report_hour.from')
-            ?? request()->input('filter.report_hour.from');
-        $toInput   = request()->input('_data.filter.report_hour.to')
-            ?? request()->input('filter.report_hour.to');
+        $fromInput = request()->input('_data.filter.trx_date.from')
+            ?? request()->input('filter.trx_date.from');
+        $toInput   = request()->input('_data.filter.trx_date.to')
+            ?? request()->input('filter.trx_date.to');
 
         $isDefault = empty($fromInput) && empty($toInput);
 
-        $dateFrom = !empty($fromInput) ? $fromInput : Carbon::yesterday()->format('Y-m-d');
+        $dateFrom = !empty($fromInput) ? substr($fromInput, 0, 10) : Carbon::yesterday()->format('Y-m-d');
         $dateTo   = !empty($toInput)
-            ? $toInput
+            ? substr($toInput, 0, 10)
             : ($isDefault ? Carbon::yesterday()->format('Y-m-d') : Carbon::now()->format('Y-m-d'));
 
         $period = Carbon::parse($dateFrom)->format('d M Y')
@@ -229,8 +230,9 @@ class MteleplusReportIndexPage extends IndexPage
                 . Carbon::parse($dateTo)->format('d M Y');
 
         $data = MteleplusReport::query()
-            ->whereBetween('report_hour', [$dateFrom . ' 00:00:00', $dateTo . ' 23:59:59'])
-            ->orderBy('report_hour')
+            ->whereBetween('trx_date', [$dateFrom, $dateTo])
+            ->orderBy('trx_date')
+            ->orderBy('trx_hour')
             ->get();
 
         return [$dateFrom, $dateTo, $period, $data, $isDefault];
@@ -256,8 +258,8 @@ class MteleplusReportIndexPage extends IndexPage
 
         // Granularitas otomatis: per jam untuk rentang sempit, per hari untuk rentang
         // lebar — supaya chart tidak terlalu padat/noisy saat difilter berhari-hari.
-        $sorted = $data->sortBy(fn($r) => $r->report_hour->format('Y-m-d H:i:s'))->values();
-        $g      = $this->chartGranularity($sorted, fn($r) => $r->report_hour, fn($r) => (int) $r->report_hour->format('H'));
+        $sorted = $data->sortBy(fn($r) => $r->trx_date->format('Y-m-d') . sprintf('%02d', $r->trx_hour))->values();
+        $g      = $this->chartGranularity($sorted, fn($r) => $r->trx_date, fn($r) => $r->trx_hour);
         $label  = $g['label'];
         $unit   = $g['isDaily'] ? 'Hari' : 'Jam';
 

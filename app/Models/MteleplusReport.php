@@ -5,19 +5,31 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MteleplusReport extends Model
 {
     protected $fillable = [
-        'report_hour',
+        'report_source_id',
+        'trx_date',
+        'trx_hour',
         'akt_success', 'akt_fail',
         'rpin_success', 'rpin_fail',
         'total_incoming', 'total_outgoing',
     ];
 
     protected $casts = [
-        'report_hour' => 'datetime',
+        'trx_date'         => 'date',
+        'trx_hour'         => 'integer',
+        'report_source_id' => 'integer',
     ];
+
+    protected $with = ['reportSource'];
+
+    public function reportSource(): BelongsTo
+    {
+        return $this->belongsTo(ReportSource::class);
+    }
 
     public function getAktTotalAttribute(): int
     {

@@ -83,6 +83,16 @@ class ReportSourceSeeder extends Seeder
                     'created_at'         => now(),
                     'updated_at'         => now(),
                 ],
+                [
+                    'service_name'       => 'mteleplus',
+                    'app_id'             => 'AFO',
+                    'data_source'        => 'ELK',
+                    'data_source_name'   => 'log-mteleplus*',
+                    'service_integrator' => 'Mteleplus',
+                    'kode_prefix'        => null,
+                    'created_at'         => now(),
+                    'updated_at'         => now(),
+                ],
             ],
         );
     }

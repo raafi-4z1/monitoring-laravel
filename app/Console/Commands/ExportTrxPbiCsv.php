@@ -8,6 +8,8 @@ use App\Models\ReportSource;
 use App\Models\TrxPbiLimitReport;
 use App\Models\TrxPbiSettlementReport;
 use App\Services\ActivityLogger;
+use App\Services\CsvFormulaGuard;
+use App\Services\SafeFilename;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -39,14 +41,14 @@ class ExportTrxPbiCsv extends Command
         $settlementRows = TrxPbiSettlementReport::whereDate('trx_date', $date)->get();
 
         $source   = ReportSource::where('service_name', 'trx_pbi_limit')->first();
-        $prefix   = $source?->kode_prefix ?? 'BP';
-        $appId    = $source?->app_id ?? 'UNKNOWN';
-        $appName  = $source?->service_integrator ?? 'UNKNOWN';
+        $prefix   = SafeFilename::segment($source?->kode_prefix, 'BP');
+        $appId    = SafeFilename::segment($source?->app_id);
+        $appName  = SafeFilename::segment($source?->service_integrator);
 
         $rows     = $this->mapRows($limitRows)->merge($this->mapRows($settlementRows));
         $filename = $dir . DIRECTORY_SEPARATOR . $date->format('Ymd') . "_{$prefix}_{$appId}_{$appName}.csv";
 
-        (new FastExcel($rows))->configureCsv()->export($filename);
+        (new FastExcel(CsvFormulaGuard::rows($rows)))->configureCsv()->export($filename);
 
         $total = $limitRows->count() + $settlementRows->count();
         $this->info("  {$total} baris (limit: {$limitRows->count()}, settlement: {$settlementRows->count()}) → {$filename}");

@@ -7,6 +7,8 @@ namespace App\Console\Commands;
 use App\Models\ReportSource;
 use App\Models\SystemOnlineReport;
 use App\Services\ActivityLogger;
+use App\Services\CsvFormulaGuard;
+use App\Services\SafeFilename;
 use App\Services\SystemOnlineReportService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -53,14 +55,14 @@ class ExportSystemOnlineCsv extends Command
         }
 
         $source  = ReportSource::where('service_name', SystemOnlineReportService::SERVICE_NAME)->first();
-        $prefix  = $source?->kode_prefix ?? 'SPO';
-        $appId   = $source?->app_id ?? 'UNKNOWN';
-        $appName = $source?->service_integrator ?? 'UNKNOWN';
+        $prefix  = SafeFilename::segment($source?->kode_prefix, 'SPO');
+        $appId   = SafeFilename::segment($source?->app_id);
+        $appName = SafeFilename::segment($source?->service_integrator);
 
         $filename = $dir . DIRECTORY_SEPARATOR
             . $date->format('Ymd') . "_{$prefix}_{$appId}_{$appName}.csv";
 
-        (new FastExcel($this->mapRows($rows)))->configureCsv()->export($filename);
+        (new FastExcel(CsvFormulaGuard::rows($this->mapRows($rows))))->configureCsv()->export($filename);
 
         $this->info("  {$rows->count()} baris → {$filename}");
         $this->info('Export selesai.');

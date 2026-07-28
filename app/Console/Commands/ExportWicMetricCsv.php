@@ -8,6 +8,8 @@ use App\Models\ReportSource;
 use App\Models\WicAppMetricReport;
 use App\Models\WicDbMetricReport;
 use App\Services\ActivityLogger;
+use App\Services\CsvFormulaGuard;
+use App\Services\SafeFilename;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -39,8 +41,8 @@ class ExportWicMetricCsv extends Command
         }
 
         $source   = ReportSource::where('service_name', 'wic_db_dc')->first();
-        $prefix   = $source?->kode_prefix ?? 'SPI';
-        $appId    = $source?->app_id      ?? 'UNKNOWN';
+        $prefix   = SafeFilename::segment($source?->kode_prefix, 'SPI');
+        $appId    = SafeFilename::segment($source?->app_id);
         $filename = $dir . DIRECTORY_SEPARATOR
             . $date->format('Ymd') . "_{$prefix}_{$appId}_WIC.csv";
 
@@ -68,7 +70,7 @@ class ExportWicMetricCsv extends Command
             return self::SUCCESS;
         }
 
-        (new FastExcel($rows))->configureCsv()->export($filename);
+        (new FastExcel(CsvFormulaGuard::rows($rows)))->configureCsv()->export($filename);
 
         $this->info("CSV berhasil dibuat: {$filename} ({$rows->count()} baris)");
         ActivityLogger::logGuest('export_scheduled', "Scheduled export WIC Metric berhasil: {$rows->count()} baris untuk {$date->format('Y-m-d')}", ['command' => $this->signature, 'date' => $date->format('Y-m-d'), 'total' => $rows->count(), 'file' => $filename]);

@@ -338,6 +338,17 @@ Hitungan per-IP hanya menghitung percobaan yang gagal dan langsung direset begit
 
 > **Catatan saat deploy di belakang reverse proxy** (mis. setup HTTPS via web server): daftarkan `trustProxies` di `bootstrap/app.php`. Tanpa itu semua request terlihat berasal dari IP proxy, sehingga kuota per-IP jadi dibagi oleh seluruh user dan satu orang yang salah ketik berulang bisa mengunci semua orang.
 
+### Kebijakan Password
+
+Password akun (baik dibuat admin lewat resource Users, maupun diganti sendiri lewat halaman profil) wajib minimal **12 karakter**, kombinasi huruf besar-kecil dan angka. Syarat simbol sengaja tidak diwajibkan karena akses aplikasi ini terbatas (bukan publik). Diatur terpusat di `AppServiceProvider` — kalau perlu disesuaikan lagi, cukup ubah di satu method (`configurePasswordPolicy()`).
+
+> Perintah `php artisan moonshine:user` (pembuatan akun admin pertama saat instalasi) **tidak** melewati validasi ini — password yang diketik langsung di-hash apa adanya. Kebijakan di atas baru berlaku untuk perubahan/pembuatan akun berikutnya lewat panel.
+
+### Keamanan Export
+
+- **Formula injection dinetralkan** di seluruh export CSV/Excel — baik yang dipicu manual dari panel maupun yang berjalan terjadwal. Sel yang diawali `=`, `+`, `@`, atau tab (pola umum serangan CSV formula injection) diberi awalan tanda kutip supaya dibuka sebagai teks biasa, bukan dieksekusi sebagai rumus oleh Excel/LibreOffice. Nilai lain (termasuk yang diawali `-` seperti angka negatif atau tanda `-` kosong) tidak terpengaruh.
+- **Nama file export terjadwal dibersihkan** dari karakter yang tidak sah — `kode_prefix`, `app_id`, dan `service_integrator` di Report Sources bisa diedit dari panel dan disambung langsung ke nama file, jadi nilai yang tidak wajar (mis. mengandung `../`) tidak lagi bisa mengarahkan file ke luar folder tujuan.
+
 ---
 
 ## Halaman Admin Panel

@@ -6,9 +6,11 @@ use App\Models\AppMetric;
 use App\Models\MasterAplikasi;
 use App\Models\MasterMetrik;
 use App\Models\ReportSource;
+use App\MoonShine\Http\Requests\StrongPasswordProfileFormRequest;
 use App\Observers\ActivityLogObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use MoonShine\Laravel\Http\Requests\ProfileFormRequest;
 use MoonShine\Laravel\Models\MoonshineUser;
 use MoonShine\Laravel\Models\MoonshineUserRole;
 
@@ -19,7 +21,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // MoonShine\Laravel\Http\Requests\ProfileFormRequest (ganti password lewat halaman
+        // profil) memvalidasi dengan aturan hardcode 'min:6', tidak memakai Password::defaults().
+        // Tanpa binding ini, kebijakan password kuat di bawah hanya berlaku saat admin
+        // membuat/mengubah user lewat resource Users — user tetap bisa ganti passwordnya
+        // sendiri ke "123456" lewat profil. Lihat StrongPasswordProfileFormRequest.
+        $this->app->bind(ProfileFormRequest::class, StrongPasswordProfileFormRequest::class);
     }
 
     /**
@@ -51,10 +58,14 @@ class AppServiceProvider extends ServiceProvider
      * Syarat password saat akun dibuat/diubah dari panel.
      *
      * Bawaan Laravel cuma minimal 8 karakter tanpa syarat kompleksitas apa pun, sehingga
-     * password seperti "12345678" lolos. Dinaikkan di sini supaya berlaku serentak di semua
-     * tempat yang memakai PasswordRule::defaults() (form user MoonShine maupun profil).
+     * password seperti "12345678" lolos. Dinaikkan di sini supaya berlaku di form user
+     * MoonShine; halaman profil butuh binding terpisah di register() karena request class-nya
+     * tidak memakai Password::defaults() sama sekali.
      *
      * Kalau dirasa terlalu ketat, cukup ubah di method ini saja.
+     *
+     * ->symbols() sengaja dikomentari — aplikasi ini aksesnya terbatas (bukan publik), jadi
+     * syarat simbol dianggap kurang perlu dan cuma bikin ribet mengetik password.
      *
      * Catatan: uncompromised() sengaja TIDAK dipakai — pengecekannya menembak API
      * haveibeenpwned lewat internet, sedangkan aplikasi ini jalan di LAN internal, jadi
@@ -66,7 +77,7 @@ class AppServiceProvider extends ServiceProvider
             static fn (): Password => Password::min(12)
                 ->mixedCase()
                 ->numbers()
-                ->symbols()
+                // ->symbols()
         );
     }
 }

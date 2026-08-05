@@ -28,6 +28,8 @@ use MoonShine\UI\Components\Layout\Div;
 use MoonShine\UI\Components\Layout\Divider;
 use MoonShine\UI\Components\Layout\Grid;
 use MoonShine\UI\Components\Metrics\Wrapped\ValueMetric;
+use MoonShine\UI\Components\Tabs;
+use MoonShine\UI\Components\Tabs\Tab;
 use MoonShine\UI\Fields\DateRange;
 use MoonShine\UI\Fields\Preview;
 use MoonShine\UI\Fields\Select;
@@ -150,9 +152,23 @@ class TrxPbiLoaderReportIndexPage extends IndexPage
         return [
             $this->lastUpdateAlert(),
             ...parent::mainLayer(),
-            Fragment::make([$this->buildCharts($data, $period, $statusFilter)])
-                ->name('trx-pbi-loader-charts')
-                ->withQueryParams(),
+            // Yang dipisah jadi tab cuma dua CHART-nya (chart mengikuti filter vs
+            // perbandingan bulanan tetap) — datatable di bawah ini TIDAK ikut masuk tab,
+            // tetap tampil seperti biasa apa pun tab yang sedang dipilih.
+            Tabs::make([
+                Tab::make('Chart Periode', [
+                    Fragment::make([$this->buildCharts($data, $period, $statusFilter)])
+                        ->name('trx-pbi-loader-charts')
+                        ->withQueryParams(),
+                ])->active(),
+                Tab::make('Perbandingan Bulanan', [
+                    // Sengaja TIDAK ->withQueryParams() — isinya tetap (2 bulan penuh
+                    // terakhir sebelum bulan berjalan), tidak boleh ikut berubah saat
+                    // filter tanggal/status di atas diubah.
+                    Fragment::make([$this->buildMonthlyComparisonChart()])
+                        ->name('trx-pbi-loader-monthly-comparison'),
+                ]),
+            ]),
         ];
     }
 
@@ -313,5 +329,115 @@ class TrxPbiLoaderReportIndexPage extends IndexPage
                 ])->columnSpan(12)
                 : null,
         ]));
+    }
+
+    /**
+     * Perbandingan tetap 2 bulan penuh terakhir SEBELUM bulan berjalan (mis. sekarang Agustus
+     * -> Juni & Juli), sengaja mengecualikan bulan berjalan karena datanya belum lengkap
+     * sebulan penuh sehingga tidak adil dibandingkan dengan bulan yang sudah selesai.
+     *
+     * Ditampilkan per tanggal (1..akhir bulan terpanjang) supaya kedua bulan bisa ditumpuk
+     * dalam satu chart pada sumbu-X yang sama ("tanggal ke berapa"), bukan cuma 1 angka
+     * total per bulan — jauh lebih kelihatan pola naik/turunnya per hari.
+     *
+     * Query & agregasi di sini independen dari getFilteredData()/buildCharts() di atas —
+     * tidak terpengaruh filter tanggal/status pada tabel.
+     */
+    private function buildMonthlyComparisonChart(): Grid
+    {
+        $months = collect([2, 1])->map(
+            fn (int $n) => Carbon::now()->subMonthsNoOverflow($n)->startOfMonth()
+        );
+
+        $perMonth = $months->mapWithKeys(function (Carbon $month) {
+            $rowsByDay = TrxPbiLoaderReport::query()
+                ->whereBetween('trx_date', [
+                    $month->format('Y-m-d'),
+                    $month->copy()->endOfMonth()->format('Y-m-d'),
+                ])
+                ->get()
+                ->groupBy(fn ($r) => (int) $r->trx_date->format('d'));
+
+            return [$month->format('M Y') => [
+                'rows_by_day'   => $rowsByDay,
+                'days_in_month' => $month->daysInMonth,
+            ]];
+        });
+
+        if ($perMonth->every(fn (array $m) => $m['rows_by_day']->isEmpty())) {
+            return Grid::make([
+                Column::make([Divider::make()])->columnSpan(12),
+                Column::make([
+                    Alert::make(type: 'info')->content(
+                        'Belum ada data untuk perbandingan bulanan (' . $perMonth->keys()->implode(' & ') . ').'
+                    ),
+                ])->columnSpan(12),
+            ]);
+        }
+
+        $maxDay = $perMonth->max(fn (array $m) => $m['days_in_month']);
+        $days   = range(1, $maxDay);
+
+        // $failed* di sini adalah SUM record_processed pada baris berstatus gagal (bukan
+        // jumlah job gagal) — konsisten dengan $record* yang juga menjumlah record_processed.
+        $recordSeries = $throughputSeries = $failedSeries = [];
+
+        foreach ($perMonth as $label => $info) {
+            $rowsByDay    = $info['rows_by_day'];
+            $daysInMonth  = $info['days_in_month'];
+            $record = $throughput = $failed = [];
+
+            foreach ($days as $d) {
+                // Tanggal ini tidak ada di bulan ybs (mis. 31 untuk bulan yang cuma 30 hari)
+                // -> null, supaya chart menampilkan celah, bukan seolah nol aktivitas.
+                if ($d > $daysInMonth) {
+                    $record[$d] = $throughput[$d] = $failed[$d] = null;
+
+                    continue;
+                }
+
+                $dayRows = $rowsByDay->get($d, collect());
+                $success = $dayRows->where('status_job', 'success');
+
+                $record[$d]     = (int) $dayRows->sum('record_processed');
+                $throughput[$d] = $success->isNotEmpty() ? round((float) $success->avg('throughput_row_per_sec'), 2) : 0.0;
+                $failed[$d]     = (int) $dayRows->where('status_job', 'failed')->sum('record_processed');
+            }
+
+            $recordSeries[$label]     = $record;
+            $throughputSeries[$label] = $throughput;
+            $failedSeries[$label]     = $failed;
+        }
+
+        $toLines = static fn (array $series): array => collect($series)
+            ->map(fn (array $data, string $label) => SeriesItem::make($label, $data)->line())
+            ->values()
+            ->all();
+
+        $labels = $perMonth->keys();
+
+        return Grid::make([
+            Column::make([Divider::make()])->columnSpan(12),
+            Column::make([
+                Alert::make(type: 'info')->content(
+                    "Perbandingan bulanan tetap per tanggal: <strong>{$labels->first()}</strong> vs <strong>{$labels->last()}</strong> — tidak mengikuti filter tabel di atas."
+                ),
+            ])->columnSpan(12),
+
+            Column::make([
+                LineChartMetric::make('Total Record Processed per Tanggal')
+                    ->series($toLines($recordSeries)),
+            ])->columnSpan(12),
+
+            Column::make([
+                LineChartMetric::make('Avg Throughput (row/s) per Tanggal')
+                    ->series($toLines($throughputSeries)),
+            ])->columnSpan(12),
+
+            Column::make([
+                LineChartMetric::make('Total Record Gagal per Tanggal')
+                    ->series($toLines($failedSeries)),
+            ])->columnSpan(12),
+        ]);
     }
 }

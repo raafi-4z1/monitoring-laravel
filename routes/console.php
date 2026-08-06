@@ -50,3 +50,10 @@ Schedule::command('report:fetch-system-online')
     ->withoutOverlapping()
     ->then(fn () => Artisan::call('report:export-system-online-csv'))
     ->appendOutputTo(storage_path('logs/system-online-fetch.log'));
+
+// Job Execution (Space-X / Reporting Luar Negeri) - hanya fetch, tidak ada auto-export
+// terjadwal (export manual tetap tersedia lewat tombol Export di panel).
+Schedule::command('report:fetch-job-execution')
+    ->dailyAt('00:21')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/job-execution-fetch.log'));

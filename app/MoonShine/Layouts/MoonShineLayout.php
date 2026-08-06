@@ -7,6 +7,7 @@ namespace App\MoonShine\Layouts;
 use App\MoonShine\Resources\ActivityLog\ActivityLogResource;
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
+use App\MoonShine\Resources\JobExecutionReport\JobExecutionReportResource;
 use App\MoonShine\Resources\MasterAplikasi\MasterAplikasiResource;
 use App\MoonShine\Resources\MasterMetrik\MasterMetrikResource;
 use App\MoonShine\Resources\ReportSource\ReportSourceResource;
@@ -128,6 +129,24 @@ final class MoonShineLayout extends AppLayout
             ])->icon('cpu-chip')->canSee($anyCanSee([
                 WicDbMetricReportResource::class,
                 WicAppMetricReportResource::class,
+            ])),
+
+            // Space-X (Reporting Luar Negeri) — Job Execution & File Archive ada di dalam
+            // Server London. Server Tokyo masih kosong, placeholder untuk server lain nanti.
+            //
+            // Server London TIDAK perlu ->canSee(fn () => true) eksplisit: begitu isinya ada
+            // (Job Execution), visibility-nya otomatis ikut permission item di dalamnya lewat
+            // MenuElements::onlyVisible() (grup disembunyikan kalau semua isinya tersaring).
+            // Server Tokyo dipaksa tetap tampil karena masih benar-benar kosong.
+            MenuGroup::make('Space-X', [
+                MenuGroup::make('Server London', [
+                    MenuItem::make(JobExecutionReportResource::class, 'Job Execution')
+                        ->icon('cog-6-tooth')
+                        ->canSee($canSee(JobExecutionReportResource::class)),
+                ])->icon('server'),
+                MenuGroup::make('Server Tokyo', [])->icon('server')->canSee(fn () => true),
+            ])->icon('rocket-launch')->canSee($anyCanSee([
+                JobExecutionReportResource::class,
             ])),
         ];
     }

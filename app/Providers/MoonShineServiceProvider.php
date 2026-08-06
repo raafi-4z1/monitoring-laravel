@@ -8,6 +8,8 @@ use App\MoonShine\Resources\ActivityLog\ActivityLogResource;
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\EngineNotifReport\Pages\EngineNotifReportFetchPage;
+use App\MoonShine\Resources\JobExecutionReport\JobExecutionReportResource;
+use App\MoonShine\Resources\JobExecutionReport\Pages\JobExecutionReportFetchPage;
 use App\MoonShine\Resources\MasterAplikasi\MasterAplikasiResource;
 use App\MoonShine\Resources\MasterMetrik\MasterMetrikResource;
 use App\MoonShine\Resources\ReportSource\ReportSourceResource;
@@ -132,6 +134,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 WicDbMetricReportResource::class,
                 WicAppMetricReportResource::class,
                 ActivityLogResource::class,
+                JobExecutionReportResource::class,
             ])
             ->pages([
                 ...$core->getConfig()->getPages(),
@@ -144,6 +147,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 WicDbMetricReportFetchPage::class,
                 WicAppMetricReportFetchPage::class,
                 RolePermissionsPage::class,
+                JobExecutionReportFetchPage::class,
             ]);
 
         $core->getConfig()->authorizationRules(

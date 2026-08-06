@@ -93,6 +93,16 @@ class ReportSourceSeeder extends Seeder
                     'created_at'         => now(),
                     'updated_at'         => now(),
                 ],
+                [
+                    'service_name'       => 'job_execution',
+                    'app_id'             => 'AFO',
+                    'data_source'        => 'Grafana',
+                    'data_source_name'   => 'reportingkcln-*',
+                    'service_integrator' => 'Reporting Luar Negeri',
+                    'kode_prefix'        => null,
+                    'created_at'         => now(),
+                    'updated_at'         => now(),
+                ],
             ],
         );
     }

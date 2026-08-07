@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\JobExecutionReport;
+use App\Models\SpacexLdnJobExecutionReport;
 use App\Models\ReportSource;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
-class JobExecutionReportService
+class SpacexLdnJobExecutionReportService
 {
     public const SERVICE_NAME = 'job_execution';
 
@@ -30,7 +30,7 @@ class JobExecutionReportService
 
         if ($sourceId === null) {
             Log::channel('daily')->warning(
-                "JobExecutionReportService: report_source dengan service_name '" . self::SERVICE_NAME . "' tidak ditemukan. "
+                "SpacexLdnJobExecutionReportService: report_source dengan service_name '" . self::SERVICE_NAME . "' tidak ditemukan. "
                 . 'Data akan tersimpan dengan report_source_id NULL. Cek tabel report_sources.'
             );
         }
@@ -77,13 +77,13 @@ class JobExecutionReportService
                 ->filter(fn (array $doc) => in_array($doc['job_name'] ?? null, self::JOB_NAMES, true));
 
             if ($rows->isEmpty()) {
-                Log::warning("JobExecutionReport: tidak ada data untuk {$dateStr}");
+                Log::warning("SpacexLdnJobExecutionReport: tidak ada data untuk {$dateStr}");
 
                 return false;
             }
 
             foreach ($rows as $doc) {
-                JobExecutionReport::updateOrCreate(
+                SpacexLdnJobExecutionReport::updateOrCreate(
                     [
                         'job_name' => $doc['job_name'],
                         'trx_date' => $dateStr,
@@ -101,11 +101,11 @@ class JobExecutionReportService
                 );
             }
 
-            Log::info("JobExecutionReport: berhasil simpan {$rows->count()} baris untuk {$dateStr}");
+            Log::info("SpacexLdnJobExecutionReport: berhasil simpan {$rows->count()} baris untuk {$dateStr}");
 
             return true;
         } catch (\Throwable $e) {
-            Log::error("JobExecutionReport: gagal - {$e->getMessage()}");
+            Log::error("SpacexLdnJobExecutionReport: gagal - {$e->getMessage()}");
 
             return false;
         }

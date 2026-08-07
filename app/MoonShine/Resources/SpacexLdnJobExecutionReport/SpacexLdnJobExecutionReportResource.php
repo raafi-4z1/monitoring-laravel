@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\MoonShine\Resources\JobExecutionReport;
+namespace App\MoonShine\Resources\SpacexLdnJobExecutionReport;
 
-use App\Models\JobExecutionReport;
+use App\Models\SpacexLdnJobExecutionReport;
 use App\MoonShine\Handlers\GuardedExportHandler as ExportHandler;
-use App\MoonShine\Resources\JobExecutionReport\Pages\JobExecutionReportFetchPage;
-use App\MoonShine\Resources\JobExecutionReport\Pages\JobExecutionReportIndexPage;
+use App\MoonShine\Resources\SpacexLdnJobExecutionReport\Pages\SpacexLdnJobExecutionReportFetchPage;
+use App\MoonShine\Resources\SpacexLdnJobExecutionReport\Pages\SpacexLdnJobExecutionReportIndexPage;
 use MoonShine\Contracts\Core\PageContract;
 use MoonShine\Crud\Handlers\Handler;
 use MoonShine\ImportExport\Contracts\HasImportExportContract;
@@ -19,13 +19,13 @@ use MoonShine\Support\ListOf;
 use MoonShine\UI\Fields\Preview;
 
 /**
- * @extends ModelResource<JobExecutionReport, JobExecutionReportIndexPage, JobExecutionReportFetchPage>
+ * @extends ModelResource<SpacexLdnJobExecutionReport, SpacexLdnJobExecutionReportIndexPage, SpacexLdnJobExecutionReportFetchPage>
  */
-class JobExecutionReportResource extends ModelResource implements HasImportExportContract
+class SpacexLdnJobExecutionReportResource extends ModelResource implements HasImportExportContract
 {
     use ImportExportConcern;
 
-    protected string $model         = JobExecutionReport::class;
+    protected string $model         = SpacexLdnJobExecutionReport::class;
     protected string $column        = 'trx_date';
     protected string $title         = 'Job Execution';
     protected string $sortColumn    = 'trx_date';
@@ -43,7 +43,7 @@ class JobExecutionReportResource extends ModelResource implements HasImportExpor
     public function getItemsPerPage(): int
     {
         $default = $this->itemsPerPage;
-        $value   = (int) (session()?->get('jobExecutionPerPage') ?? $default);
+        $value   = (int) (session()?->get('spacexLdnJobExecutionPerPage') ?? $default);
 
         return in_array($value, $this->perPageValues()) ? $value : $default;
     }
@@ -64,8 +64,8 @@ class JobExecutionReportResource extends ModelResource implements HasImportExpor
     protected function pages(): array
     {
         return [
-            JobExecutionReportIndexPage::class,
-            JobExecutionReportFetchPage::class,
+            SpacexLdnJobExecutionReportIndexPage::class,
+            SpacexLdnJobExecutionReportFetchPage::class,
         ];
     }
 
@@ -90,8 +90,8 @@ class JobExecutionReportResource extends ModelResource implements HasImportExpor
     protected function handlers(): ListOf
     {
         return new ListOf(Handler::class, [
-            ExportHandler::make('Export Excel')->alias('export-excel')->filename('job_execution_' . date('Ymd-His'))->forceSort('trx_date'),
-            ExportHandler::make('Export CSV')->alias('export-csv')->csv()->filename('job_execution_' . date('Ymd-His'))->forceSort('trx_date'),
+            ExportHandler::make('Export Excel')->alias('export-excel')->filename('spacex_ldn_job_execution_' . date('Ymd-His'))->forceSort('trx_date'),
+            ExportHandler::make('Export CSV')->alias('export-csv')->csv()->filename('spacex_ldn_job_execution_' . date('Ymd-His'))->forceSort('trx_date'),
         ]);
     }
 }

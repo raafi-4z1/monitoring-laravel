@@ -7,7 +7,8 @@ namespace App\MoonShine\Layouts;
 use App\MoonShine\Resources\ActivityLog\ActivityLogResource;
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
-use App\MoonShine\Resources\JobExecutionReport\JobExecutionReportResource;
+use App\MoonShine\Resources\SpacexLdnJobExecutionReport\SpacexLdnJobExecutionReportResource;
+use App\MoonShine\Resources\SpacexLdnDcAppMetricReport\SpacexLdnDcAppMetricReportResource;
 use App\MoonShine\Resources\MasterAplikasi\MasterAplikasiResource;
 use App\MoonShine\Resources\MasterMetrik\MasterMetrikResource;
 use App\MoonShine\Resources\ReportSource\ReportSourceResource;
@@ -140,13 +141,17 @@ final class MoonShineLayout extends AppLayout
             // Server Tokyo dipaksa tetap tampil karena masih benar-benar kosong.
             MenuGroup::make('Space-X', [
                 MenuGroup::make('Server London', [
-                    MenuItem::make(JobExecutionReportResource::class, 'Job Execution')
+                    MenuItem::make(SpacexLdnJobExecutionReportResource::class, 'Job Execution')
                         ->icon('cog-6-tooth')
-                        ->canSee($canSee(JobExecutionReportResource::class)),
+                        ->canSee($canSee(SpacexLdnJobExecutionReportResource::class)),
+                    MenuItem::make(SpacexLdnDcAppMetricReportResource::class, 'APP Metric (DC)')
+                        ->icon('cpu-chip')
+                        ->canSee($canSee(SpacexLdnDcAppMetricReportResource::class)),
                 ])->icon('server'),
                 MenuGroup::make('Server Tokyo', [])->icon('server')->canSee(fn () => true),
             ])->icon('rocket-launch')->canSee($anyCanSee([
-                JobExecutionReportResource::class,
+                SpacexLdnJobExecutionReportResource::class,
+                SpacexLdnDcAppMetricReportResource::class,
             ])),
         ];
     }

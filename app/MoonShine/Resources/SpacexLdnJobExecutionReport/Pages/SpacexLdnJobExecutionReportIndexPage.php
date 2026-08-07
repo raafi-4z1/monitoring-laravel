@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\MoonShine\Resources\JobExecutionReport\Pages;
+namespace App\MoonShine\Resources\SpacexLdnJobExecutionReport\Pages;
 
-use App\Models\JobExecutionReport;
-use App\MoonShine\Resources\JobExecutionReport\JobExecutionReportResource;
+use App\Models\SpacexLdnJobExecutionReport;
+use App\MoonShine\Resources\SpacexLdnJobExecutionReport\SpacexLdnJobExecutionReportResource;
 use Carbon\Carbon;
 use MoonShine\Apexcharts\Components\LineChartMetric;
 use MoonShine\Apexcharts\Support\SeriesItem;
@@ -29,9 +29,9 @@ use MoonShine\UI\Fields\Preview;
 use MoonShine\UI\Fields\Select;
 
 /**
- * @extends IndexPage<JobExecutionReportResource>
+ * @extends IndexPage<SpacexLdnJobExecutionReportResource>
  */
-class JobExecutionReportIndexPage extends IndexPage
+class SpacexLdnJobExecutionReportIndexPage extends IndexPage
 {
     protected bool $isLazy = true;
 
@@ -43,7 +43,7 @@ class JobExecutionReportIndexPage extends IndexPage
     private const DAY_NAMES_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
     /**
-     * Cuma 2 job yang dipantau (lihat JobExecutionReportService::JOB_NAMES) - status selalu
+     * Cuma 2 job yang dipantau (lihat SpacexLdnJobExecutionReportService::JOB_NAMES) - status selalu
      * SUCCESS (job yang gagal tidak masuk log Grafana sama sekali), jadi tidak ada chart status.
      */
     protected function assets(): array
@@ -128,7 +128,7 @@ class JobExecutionReportIndexPage extends IndexPage
         $perPage = request()->integer('value');
 
         if ($perPage > 0) {
-            session(['jobExecutionPerPage' => $perPage]);
+            session(['spacexLdnJobExecutionPerPage' => $perPage]);
         }
 
         return JsonResponse::make()->events([
@@ -158,7 +158,7 @@ class JobExecutionReportIndexPage extends IndexPage
      */
     private function buildWeeklyDurationComparison(): Grid
     {
-        $latestDate = JobExecutionReport::max('trx_date');
+        $latestDate = SpacexLdnJobExecutionReport::max('trx_date');
 
         if ($latestDate === null) {
             return Grid::make([
@@ -172,7 +172,7 @@ class JobExecutionReportIndexPage extends IndexPage
         $weekAEnd   = $weekBStart->copy()->subDay();
         $weekAStart = $weekAEnd->copy()->subDays(6);
 
-        $rows = JobExecutionReport::query()
+        $rows = SpacexLdnJobExecutionReport::query()
             ->whereBetween('trx_date', [$weekAStart->format('Y-m-d'), $weekBEnd->format('Y-m-d')])
             ->get();
 
@@ -245,7 +245,7 @@ class JobExecutionReportIndexPage extends IndexPage
 
     protected function lastUpdateAlert(): Alert
     {
-        $latest = JobExecutionReport::latest('trx_date')->first();
+        $latest = SpacexLdnJobExecutionReport::latest('trx_date')->first();
 
         return $latest
             ? Alert::make(type: 'info')

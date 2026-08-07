@@ -22,3 +22,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Catatan kerja internal (bukan dokumentasi aplikasi) - tidak untuk di-commit
+/docs

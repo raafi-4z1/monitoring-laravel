@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\MoonShine\Resources\JobExecutionReport\Pages;
+namespace App\MoonShine\Resources\SpacexLdnDcAppMetricReport\Pages;
 
 use App\MoonShine\Concerns\GuardsFetchPageAccess;
-use App\MoonShine\Resources\JobExecutionReport\JobExecutionReportResource;
-use App\Services\JobExecutionReportService;
+use App\MoonShine\Resources\SpacexLdnDcAppMetricReport\SpacexLdnDcAppMetricReportResource;
+use App\Services\SpacexLdnDcAppMetricReportService;
 use Carbon\Carbon;
 use MoonShine\Contracts\UI\ComponentContract;
 use MoonShine\Crud\JsonResponse;
@@ -28,15 +28,15 @@ use MoonShine\UI\Fields\Date;
 use Throwable;
 
 /**
- * @extends FormPage<JobExecutionReportResource>
+ * @extends FormPage<SpacexLdnDcAppMetricReportResource>
  */
-class JobExecutionReportFetchPage extends FormPage
+class SpacexLdnDcAppMetricReportFetchPage extends FormPage
 {
     use GuardsFetchPageAccess;
 
     public function getTitle(): string
     {
-        return 'Fetch Data Job Execution dari Elasticsearch (via Grafana)';
+        return 'Fetch Data APP Metric (DC) dari Elasticsearch (via Grafana)';
     }
 
     public function getBreadcrumbs(): array
@@ -63,13 +63,13 @@ class JobExecutionReportFetchPage extends FormPage
         $loadingXData = '{ loading: false, init() { const t = this; const f = this.$el.querySelector(\'form\'); if (f) { f.addEventListener(\'submit\', () => { t.loading = true; }); } const r = this.$el.querySelector(\'.async-fetch-result\'); if (r) { new MutationObserver(() => { t.loading = false; }).observe(r, { childList: true, subtree: true }); } const applyTheme = () => { const dark = t.$store.darkMode.on; const card = t.$el.querySelector(\'.loading-card\'); const txt = t.$el.querySelector(\'.loading-text\'); if (card) { card.style.background = dark ? \'rgba(30,30,40,.95)\' : \'rgba(255,255,255,.98)\'; card.style.boxShadow = dark ? \'0 25px 50px rgba(0,0,0,.5)\' : \'0 25px 50px rgba(0,0,0,.15)\'; } if (txt) { txt.style.color = dark ? \'white\' : \'#1f2937\'; } }; this.$nextTick(() => { applyTheme(); }); window.addEventListener(\'darkMode:toggle\', () => { applyTheme(); }); } }';
 
         return [
-            Heading::make('Fetch Data Job Execution dari Elasticsearch (via Grafana)'),
+            Heading::make('Fetch Data APP Metric (DC) dari Elasticsearch (via Grafana)'),
 
             Alert::make(type: 'warning')
                 ->content('Gunakan form ini untuk mengambil data dari Elasticsearch (lewat proxy Grafana) berdasarkan rentang tanggal tertentu dan menyimpannya ke database. Maksimal 90 hari per fetch.'),
 
             Alert::make(type: 'info')
-                ->content('⏳ Data diambil dari index <strong>reportingkcln-*</strong> (log_category: BATCH_JOB), khusus job <strong>Batch_edw.sh</strong> dan <strong>run_edw_dblink.sh</strong>.'),
+                ->content('⏳ Data diambil dari index <strong>metricbeat-*</strong> (agent.name: HQREPOLDNDC), metric CPU/Memory/Filesystem (drive Z: dikecualikan).'),
 
             Divider::make(),
 
@@ -91,7 +91,7 @@ class JobExecutionReportFetchPage extends FormPage
 
                 FormBuilder::make()
                     ->asyncMethod('fetchManual')
-                    ->name('job-execution-fetch-form')
+                    ->name('spacex-ldn-dc-app-metric-fetch-form')
                     ->fields([
                         Flex::make([
                             Date::make('Dari Tanggal', 'fetch_date_from')
@@ -112,7 +112,7 @@ class JobExecutionReportFetchPage extends FormPage
                                     ':class'    => "{ 'opacity-50 cursor-not-allowed': loading }",
                                 ])
                                 ->dispatchEvent([
-                                    AlpineJs::event(JsEvent::FORM_SUBMIT, 'job-execution-fetch-form'),
+                                    AlpineJs::event(JsEvent::FORM_SUBMIT, 'spacex-ldn-dc-app-metric-fetch-form'),
                                 ]),
                         ])->unwrap(),
                     ])
@@ -165,7 +165,7 @@ class JobExecutionReportFetchPage extends FormPage
         }
 
         try {
-            $service = app(JobExecutionReportService::class);
+            $service = app(SpacexLdnDcAppMetricReportService::class);
             $success = 0;
             $failed  = 0;
             $current = $from->copy();

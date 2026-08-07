@@ -7,9 +7,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class JobExecutionReport extends Model
+class SpacexLdnJobExecutionReport extends Model
 {
-    protected $table = 'job_execution_reports';
+    protected $table = 'spacex_ldn_job_execution_reports';
 
     protected $fillable = [
         'report_source_id',

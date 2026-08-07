@@ -53,7 +53,14 @@ Schedule::command('report:fetch-system-online')
 
 // Job Execution (Space-X / Reporting Luar Negeri) - hanya fetch, tidak ada auto-export
 // terjadwal (export manual tetap tersedia lewat tombol Export di panel).
-Schedule::command('report:fetch-job-execution')
+Schedule::command('report:fetch-spacex-ldn-job-execution')
     ->dailyAt('00:21')
     ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/job-execution-fetch.log'));
+    ->appendOutputTo(storage_path('logs/spacex-ldn-job-execution-fetch.log'));
+
+// APP Metric (DC) (HQREPOLDNDC / Space-X Server London) - hanya fetch, tidak ada auto-export
+// terjadwal (export manual tetap tersedia lewat tombol Export di panel).
+Schedule::command('report:fetch-spacex-ldn-dc-app-metric')
+    ->dailyAt('00:25')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/spacex-ldn-dc-app-metric-fetch.log'));

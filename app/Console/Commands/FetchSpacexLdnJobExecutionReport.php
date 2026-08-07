@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Services\ActivityLogger;
-use App\Services\JobExecutionReportService;
+use App\Services\SpacexLdnJobExecutionReportService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
-class FetchJobExecutionReport extends Command
+class FetchSpacexLdnJobExecutionReport extends Command
 {
-    protected $signature = 'report:fetch-job-execution
+    protected $signature = 'report:fetch-spacex-ldn-job-execution
                             {--date= : Tanggal fetch (Y-m-d). Default: kemarin}';
 
     protected $description = 'Fetch data Job Execution (Space-X / Reporting Luar Negeri) dari Elasticsearch lewat proxy Grafana';
 
-    public function handle(JobExecutionReportService $service): int
+    public function handle(SpacexLdnJobExecutionReportService $service): int
     {
         $date = $this->option('date')
             ? Carbon::parse($this->option('date'))

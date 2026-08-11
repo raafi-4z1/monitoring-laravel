@@ -12,6 +12,8 @@ use App\MoonShine\Resources\SpacexLdnJobExecutionReport\SpacexLdnJobExecutionRep
 use App\MoonShine\Resources\SpacexLdnJobExecutionReport\Pages\SpacexLdnJobExecutionReportFetchPage;
 use App\MoonShine\Resources\SpacexLdnDcAppMetricReport\SpacexLdnDcAppMetricReportResource;
 use App\MoonShine\Resources\SpacexLdnDcAppMetricReport\Pages\SpacexLdnDcAppMetricReportFetchPage;
+use App\MoonShine\Resources\SpacexLdnDcDbMetricReport\SpacexLdnDcDbMetricReportResource;
+use App\MoonShine\Resources\SpacexLdnDcDbMetricReport\Pages\SpacexLdnDcDbMetricReportFetchPage;
 use App\MoonShine\Resources\MasterAplikasi\MasterAplikasiResource;
 use App\MoonShine\Resources\MasterMetrik\MasterMetrikResource;
 use App\MoonShine\Resources\ReportSource\ReportSourceResource;
@@ -138,6 +140,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 ActivityLogResource::class,
                 SpacexLdnJobExecutionReportResource::class,
                 SpacexLdnDcAppMetricReportResource::class,
+                SpacexLdnDcDbMetricReportResource::class,
             ])
             ->pages([
                 ...$core->getConfig()->getPages(),
@@ -152,6 +155,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 RolePermissionsPage::class,
                 SpacexLdnJobExecutionReportFetchPage::class,
                 SpacexLdnDcAppMetricReportFetchPage::class,
+                SpacexLdnDcDbMetricReportFetchPage::class,
             ]);
 
         $core->getConfig()->authorizationRules(

@@ -9,6 +9,7 @@ use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\SpacexLdnJobExecutionReport\SpacexLdnJobExecutionReportResource;
 use App\MoonShine\Resources\SpacexLdnDcAppMetricReport\SpacexLdnDcAppMetricReportResource;
+use App\MoonShine\Resources\SpacexLdnDcDbMetricReport\SpacexLdnDcDbMetricReportResource;
 use App\MoonShine\Resources\MasterAplikasi\MasterAplikasiResource;
 use App\MoonShine\Resources\MasterMetrik\MasterMetrikResource;
 use App\MoonShine\Resources\ReportSource\ReportSourceResource;
@@ -147,11 +148,15 @@ final class MoonShineLayout extends AppLayout
                     MenuItem::make(SpacexLdnDcAppMetricReportResource::class, 'APP Metric (DC)')
                         ->icon('cpu-chip')
                         ->canSee($canSee(SpacexLdnDcAppMetricReportResource::class)),
+                    MenuItem::make(SpacexLdnDcDbMetricReportResource::class, 'DB Metric (DC)')
+                        ->icon('circle-stack')
+                        ->canSee($canSee(SpacexLdnDcDbMetricReportResource::class)),
                 ])->icon('server'),
                 MenuGroup::make('Server Tokyo', [])->icon('server')->canSee(fn () => true),
             ])->icon('rocket-launch')->canSee($anyCanSee([
                 SpacexLdnJobExecutionReportResource::class,
                 SpacexLdnDcAppMetricReportResource::class,
+                SpacexLdnDcDbMetricReportResource::class,
             ])),
         ];
     }

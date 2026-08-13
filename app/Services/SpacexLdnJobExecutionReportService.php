@@ -49,7 +49,7 @@ class SpacexLdnJobExecutionReportService
                     'query' => [
                         'bool' => [
                             'must'   => [
-                                ['query_string' => ['query' => 'log_category:"BATCH_JOB"']],
+                                ['query_string' => ['query' => 'log_category:"BATCH_JOB" AND server:"london_dc"']],
                             ],
                             'filter' => [
                                 [

@@ -68,3 +68,9 @@ Schedule::command('report:fetch-spacex-ldn-dc-db-metric')
     ->dailyAt('00:11')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/spacex-ldn-dc-db-metric-fetch.log'));
+
+// File Archive (Space-X / Reporting Luar Negeri)
+Schedule::command('report:fetch-spacex-ldn-file-archive')
+    ->dailyAt('00:12')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/spacex-ldn-file-archive-fetch.log'));

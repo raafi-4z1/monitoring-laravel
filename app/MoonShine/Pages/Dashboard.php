@@ -62,9 +62,8 @@ class Dashboard extends Page
             [TrxPbiSettlementReportResource::class, 'TrxPBI Settlement', fn () => $this->trxPbiSettlementSection($yesterday)],
             [TrxPbiLoaderReportResource::class, 'Batch Job', fn () => $this->trxPbiLoaderSection($yesterday)],
             [SystemOnlineReportResource::class, 'System Online', fn () => $this->systemOnlineSection($yesterday)],
-            [AppMetricResource::class, 'App Metric', fn () => $this->appMetricSection($yesterday)],
-            [WicDbMetricReportResource::class, 'WIC DB Metric', fn () => $this->wicMetricSection($yesterday, WicDbMetricReport::class)],
             [WicAppMetricReportResource::class, 'WIC APP Metric', fn () => $this->wicMetricSection($yesterday, WicAppMetricReport::class)],
+            [WicDbMetricReportResource::class, 'WIC DB Metric', fn () => $this->wicMetricSection($yesterday, WicDbMetricReport::class)],
         ];
 
         foreach ($sections as [$resourceClass, $title, $builder]) {
@@ -300,38 +299,6 @@ class Dashboard extends Page
         ])->columnSpan($span))->all();
 
         return Grid::make($cols);
-    }
-
-    private function appMetricSection(Carbon $date): Grid
-    {
-        $dateStr = $date->format('Y-m-d');
-        $rows    = AppMetric::whereBetween('recorded_at', [
-            $dateStr . ' 00:00:00',
-            $dateStr . ' 23:59:59',
-        ])->get();
-
-        if ($rows->isEmpty()) {
-            return Grid::make([
-                Column::make([
-                    Alert::make(type: 'warning')->content('Belum ada data App Metric untuk kemarin.'),
-                ])->columnSpan(12),
-            ]);
-        }
-
-        return Grid::make([
-            Column::make([
-                ValueMetric::make('Total Data Tercatat')
-                    ->value(number_format($rows->count())),
-            ])->columnSpan(4),
-            Column::make([
-                ValueMetric::make('Jumlah Aplikasi')
-                    ->value(number_format($rows->pluck('master_aplikasi_id')->unique()->count())),
-            ])->columnSpan(4),
-            Column::make([
-                ValueMetric::make('Jumlah Jenis Metrik')
-                    ->value(number_format($rows->pluck('master_metrik_id')->unique()->count())),
-            ])->columnSpan(4),
-        ]);
     }
 
     /**

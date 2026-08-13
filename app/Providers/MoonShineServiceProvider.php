@@ -10,6 +10,8 @@ use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\EngineNotifReport\Pages\EngineNotifReportFetchPage;
 use App\MoonShine\Resources\SpacexLdnJobExecutionReport\SpacexLdnJobExecutionReportResource;
 use App\MoonShine\Resources\SpacexLdnJobExecutionReport\Pages\SpacexLdnJobExecutionReportFetchPage;
+use App\MoonShine\Resources\SpacexLdnFileArchiveReport\SpacexLdnFileArchiveReportResource;
+use App\MoonShine\Resources\SpacexLdnFileArchiveReport\Pages\SpacexLdnFileArchiveReportFetchPage;
 use App\MoonShine\Resources\SpacexLdnDcAppMetricReport\SpacexLdnDcAppMetricReportResource;
 use App\MoonShine\Resources\SpacexLdnDcAppMetricReport\Pages\SpacexLdnDcAppMetricReportFetchPage;
 use App\MoonShine\Resources\SpacexLdnDcDbMetricReport\SpacexLdnDcDbMetricReportResource;
@@ -139,6 +141,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 WicAppMetricReportResource::class,
                 ActivityLogResource::class,
                 SpacexLdnJobExecutionReportResource::class,
+                SpacexLdnFileArchiveReportResource::class,
                 SpacexLdnDcAppMetricReportResource::class,
                 SpacexLdnDcDbMetricReportResource::class,
             ])
@@ -154,6 +157,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 WicAppMetricReportFetchPage::class,
                 RolePermissionsPage::class,
                 SpacexLdnJobExecutionReportFetchPage::class,
+                SpacexLdnFileArchiveReportFetchPage::class,
                 SpacexLdnDcAppMetricReportFetchPage::class,
                 SpacexLdnDcDbMetricReportFetchPage::class,
             ]);

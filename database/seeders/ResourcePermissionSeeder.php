@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\SpacexLdnJobExecutionReport\SpacexLdnJobExecutionReportResource;
+use App\MoonShine\Resources\SpacexLdnFileArchiveReport\SpacexLdnFileArchiveReportResource;
 use App\MoonShine\Resources\SpacexLdnDcAppMetricReport\SpacexLdnDcAppMetricReportResource;
 use App\MoonShine\Resources\SpacexLdnDcDbMetricReport\SpacexLdnDcDbMetricReportResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
@@ -33,6 +34,7 @@ class ResourcePermissionSeeder extends Seeder
                 ['resource_class' => WicDbMetricReportResource::class,      'label' => 'WIC DB Metric',            'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => WicAppMetricReportResource::class,     'label' => 'WIC APP Metric',           'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => SpacexLdnJobExecutionReportResource::class, 'label' => 'Job Execution (Space-X)',  'created_at' => now(), 'updated_at' => now()],
+                ['resource_class' => SpacexLdnFileArchiveReportResource::class, 'label' => 'File Archive (Space-X)', 'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => SpacexLdnDcAppMetricReportResource::class, 'label' => 'APP Metric (DC) (Space-X)', 'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => SpacexLdnDcDbMetricReportResource::class, 'label' => 'DB Metric (DC) (Space-X)', 'created_at' => now(), 'updated_at' => now()],
             ],

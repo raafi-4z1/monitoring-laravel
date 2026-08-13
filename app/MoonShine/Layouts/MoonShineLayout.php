@@ -8,6 +8,7 @@ use App\MoonShine\Resources\ActivityLog\ActivityLogResource;
 use App\MoonShine\Resources\AppMetric\AppMetricResource;
 use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\SpacexLdnJobExecutionReport\SpacexLdnJobExecutionReportResource;
+use App\MoonShine\Resources\SpacexLdnFileArchiveReport\SpacexLdnFileArchiveReportResource;
 use App\MoonShine\Resources\SpacexLdnDcAppMetricReport\SpacexLdnDcAppMetricReportResource;
 use App\MoonShine\Resources\SpacexLdnDcDbMetricReport\SpacexLdnDcDbMetricReportResource;
 use App\MoonShine\Resources\MasterAplikasi\MasterAplikasiResource;
@@ -91,7 +92,7 @@ final class MoonShineLayout extends AppLayout
                 ReportSourceResource::class,
             ])),
 
-            // Elastic reports — sesuai permission role
+            // Elastic reports (non-WIC) — sesuai permission role
             MenuGroup::make('Elastic', [
                 MenuItem::make(EngineNotifReportResource::class, 'Engine Notif')
                     ->icon('chart-bar')
@@ -99,38 +100,39 @@ final class MoonShineLayout extends AppLayout
                 MenuItem::make(MteleplusReportResource::class, 'Mteleplus Reports')
                     ->icon('chart-bar')
                     ->canSee($canSee(MteleplusReportResource::class)),
+            ])->icon('circle-stack')->canSee($anyCanSee([
+                EngineNotifReportResource::class,
+                MteleplusReportResource::class,
+            ])),
+
+            // WIC — gabungan semua resource yang sumbernya WIC (sebelumnya terpecah di
+            // "Elastic" dan "WIC Metric"), urutan sesuai permintaan user
+            MenuGroup::make('WIC', [
                 MenuItem::make(TrxPbiLimitReportResource::class, 'TrxPBI Limit')
                     ->icon('banknotes')
                     ->canSee($canSee(TrxPbiLimitReportResource::class)),
                 MenuItem::make(TrxPbiSettlementReportResource::class, 'TrxPBI Settlement')
                     ->icon('banknotes')
                     ->canSee($canSee(TrxPbiSettlementReportResource::class)),
-                MenuItem::make(TrxPbiLoaderReportResource::class, 'Batch Job')
-                    ->icon('cpu-chip')
-                    ->canSee($canSee(TrxPbiLoaderReportResource::class)),
                 MenuItem::make(SystemOnlineReportResource::class, 'System Online')
                     ->icon('signal')
                     ->canSee($canSee(SystemOnlineReportResource::class)),
-            ])->icon('circle-stack')->canSee($anyCanSee([
-                EngineNotifReportResource::class,
-                MteleplusReportResource::class,
-                TrxPbiLimitReportResource::class,
-                TrxPbiSettlementReportResource::class,
-                TrxPbiLoaderReportResource::class,
-                SystemOnlineReportResource::class,
-            ])),
-
-            // WIC Metric — sesuai permission role
-            MenuGroup::make('WIC Metric', [
-                MenuItem::make(WicDbMetricReportResource::class, 'WIC DB (WICADBDC)')
-                    ->icon('server-stack')
-                    ->canSee($canSee(WicDbMetricReportResource::class)),
                 MenuItem::make(WicAppMetricReportResource::class, 'WIC APP (HQWIC)')
                     ->icon('computer-desktop')
                     ->canSee($canSee(WicAppMetricReportResource::class)),
-            ])->icon('cpu-chip')->canSee($anyCanSee([
-                WicDbMetricReportResource::class,
+                MenuItem::make(WicDbMetricReportResource::class, 'WIC DB (WICADBDC)')
+                    ->icon('server-stack')
+                    ->canSee($canSee(WicDbMetricReportResource::class)),
+                MenuItem::make(TrxPbiLoaderReportResource::class, 'Batch Job')
+                    ->icon('cpu-chip')
+                    ->canSee($canSee(TrxPbiLoaderReportResource::class)),
+            ])->icon('building-office-2')->canSee($anyCanSee([
+                TrxPbiLimitReportResource::class,
+                TrxPbiSettlementReportResource::class,
+                SystemOnlineReportResource::class,
                 WicAppMetricReportResource::class,
+                WicDbMetricReportResource::class,
+                TrxPbiLoaderReportResource::class,
             ])),
 
             // Space-X (Reporting Luar Negeri) — Job Execution & File Archive ada di dalam
@@ -145,6 +147,9 @@ final class MoonShineLayout extends AppLayout
                     MenuItem::make(SpacexLdnJobExecutionReportResource::class, 'Job Execution')
                         ->icon('cog-6-tooth')
                         ->canSee($canSee(SpacexLdnJobExecutionReportResource::class)),
+                    MenuItem::make(SpacexLdnFileArchiveReportResource::class, 'File Archive')
+                        ->icon('archive-box')
+                        ->canSee($canSee(SpacexLdnFileArchiveReportResource::class)),
                     MenuItem::make(SpacexLdnDcAppMetricReportResource::class, 'APP Metric (DC)')
                         ->icon('cpu-chip')
                         ->canSee($canSee(SpacexLdnDcAppMetricReportResource::class)),
@@ -155,6 +160,7 @@ final class MoonShineLayout extends AppLayout
                 MenuGroup::make('Server Tokyo', [])->icon('server')->canSee(fn () => true),
             ])->icon('rocket-launch')->canSee($anyCanSee([
                 SpacexLdnJobExecutionReportResource::class,
+                SpacexLdnFileArchiveReportResource::class,
                 SpacexLdnDcAppMetricReportResource::class,
                 SpacexLdnDcDbMetricReportResource::class,
             ])),

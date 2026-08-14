@@ -1,36 +1,6 @@
 # Monitoring Laravel
 
-Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang mengintegrasikan data dari **Elasticsearch** ke database MySQL, dilengkapi dengan dashboard, laporan per jam, scheduler otomatis, chart interaktif, dan export Excel/CSV.
-
----
-
-## Fitur
-
-- **Engine Notif Report** — laporan per jam Engine Notif dari Elasticsearch
-- **mTeleplus Report** — laporan per jam mTeleplus dari Elasticsearch
-- **TrxPBI Limit Report** — laporan per jam transaksi WIC PBI Cek Limit, dikelompokkan per mata uang
-- **TrxPBI Settlement Report** — laporan per jam transaksi WIC PBI Settlement, dikelompokkan per mata uang
-- **TrxPBI Loader (Batch Job)** — laporan per jam batch job loader: durasi, record diproses, throughput (row/detik), dan status job (success/failed)
-- **System Online** — laporan per jam response time rata-rata layanan WIC (SVC Service & Login) dari Elasticsearch
-- **WIC DB Metric** — laporan per jam metrik server WIC DB: CPU, Memory, Disk
-- **WIC APP Metric** — laporan per jam metrik server WIC APP: CPU, Memory, Disk
-- **App Metrics** — input manual metrik server (CPU, Memory, Disk, dll.) dengan grafik per jenis metrik
-- **Master Aplikasi** — manajemen daftar nama aplikasi (CRUD + soft-delete, khusus Admin)
-- **Master Metrik** — manajemen daftar jenis metrik beserta satuan default (CRUD + soft-delete, khusus Admin)
-- **Report Sources** — konfigurasi metadata sumber data per layanan, khusus Admin
-- **Chart Interaktif** — LineChart & DonutChart via ApexCharts, dikelompokkan per mata uang / per jenis metrik, ikut filter DateRange & filter tipe metrik
-- **Reactive Form** — saat memilih metrik, kolom satuan otomatis terisi dari `satuan_default` master metrik
-- **Scheduler Otomatis** — fetch data dari Elasticsearch setiap hari otomatis
-- **Fetch Manual** — ambil data rentang tanggal tertentu langsung dari admin panel (maks 90 hari)
-- **Filter Tanggal** — filter data berdasarkan rentang tanggal dengan `DateRange`
-- **Pagination & Sort** — navigasi data dengan dropdown per page dan pengurutan kolom
-- **Export Excel & CSV** — export data ke file `.xlsx` atau `.csv` dengan format kolom lengkap termasuk metadata report source
-- **Auto Export CSV TrxPBI** — setelah fetch harian selesai, data TrxPBI Limit & Settlement kemarin diekspor otomatis ke satu file CSV
-- **Auto Export CSV WIC Metric** — setelah fetch WIC APP selesai, data WIC DB + WIC APP kemarin diekspor otomatis ke satu file CSV
-- **Auto Export CSV TrxPBI Loader** — setelah fetch TrxPBI Loader selesai, data batch job kemarin diekspor otomatis ke CSV
-- **Auto Export CSV System Online** — setelah fetch System Online selesai, data response time kemarin diekspor otomatis ke CSV
-- **Role-based Access (Dinamis)** — Admin selalu akses penuh; role lain diatur per-resource lewat halaman Hak Akses Role (checkbox matrix, tersimpan di database, default tertutup)
-- **Activity Log (Audit Trail)** — mencatat aktivitas user beserta alamat IP: login, logout, percobaan login gagal, CRUD user/role/master data/report source, perubahan hak akses role, fetch manual, dan export. Read-only, khusus Admin
+Admin panel monitoring berbasis **Laravel 12** + **MoonShine v4** yang mengintegrasikan data dari **Elasticsearch** (langsung maupun lewat proxy datasource **Grafana**) ke database MySQL, dilengkapi dengan dashboard, laporan per jam, scheduler otomatis, chart interaktif, dan export Excel/CSV.
 
 ---
 
@@ -50,9 +20,13 @@ monitoring-laravel/
 │   │       ├── ExportTrxPbiLoaderCsv.php         # Export TrxPBI Loader ke CSV
 │   │       ├── FetchSystemOnlineReport.php       # Fetch System Online (response time)
 │   │       ├── ExportSystemOnlineCsv.php         # Export System Online ke CSV
-│   │       ├── FetchWicMetricReport.php          # Fetch WIC DB Metric
+│   │       ├── FetchWicDbMetricReport.php        # Fetch WIC DB Metric
 │   │       ├── FetchWicAppMetricReport.php       # Fetch WIC APP Metric
-│   │       └── ExportWicMetricCsv.php            # Export gabungan WIC DB+APP ke CSV
+│   │       ├── ExportWicMetricCsv.php            # Export gabungan WIC DB+APP ke CSV
+│   │       ├── FetchSpacexLdnJobExecutionReport.php  # Fetch Job Execution (via proxy Grafana)
+│   │       ├── FetchSpacexLdnFileArchiveReport.php   # Fetch File Archive (via proxy Grafana)
+│   │       ├── FetchSpacexLdnDcAppMetricReport.php   # Fetch APP Metric DC (via proxy Grafana)
+│   │       └── FetchSpacexLdnDcDbMetricReport.php    # Fetch DB Metric DC (via proxy Grafana)
 │   ├── Enums/
 │   │   └── MetricUnit.php
 │   ├── Models/
@@ -67,18 +41,29 @@ monitoring-laravel/
 │   │   ├── TrxPbiSettlementReport.php
 │   │   ├── TrxPbiLoaderReport.php                # Batch job per jam per status (success/failed)
 │   │   ├── WicDbMetricReport.php                 # Metrik WIC DB per jam per tipe (cpu/memory/disk)
-│   │   └── WicAppMetricReport.php                # Metrik WIC APP per jam per tipe (cpu/memory/disk)
+│   │   ├── WicAppMetricReport.php                # Metrik WIC APP per jam per tipe (cpu/memory/disk)
+│   │   ├── SpacexLdnJobExecutionReport.php       # Batch job server London (via proxy Grafana)
+│   │   ├── SpacexLdnFileArchiveReport.php        # Hasil pengecekan file archive server London
+│   │   ├── SpacexLdnDcAppMetricReport.php        # Metrik server APP DC London (HQREPOLDNDC)
+│   │   └── SpacexLdnDcDbMetricReport.php         # Metrik server DB DC London (REPODBLDNDC)
 │   ├── MoonShine/
+│   │   ├── Auth/
+│   │   │   └── ThrottleLoginByIp.php             # Rate limit login per-IP (lapis tambahan di atas bawaan MoonShine)
 │   │   ├── Concerns/
-│   │   │   └── GuardsFetchPageAccess.php         # Guard permission untuk halaman Fetch Manual
+│   │   │   ├── GuardsFetchPageAccess.php         # Guard permission untuk halaman Fetch Manual
+│   │   │   └── BuildsHourlyOrDailyChart.php      # Helper bangun chart per jam/hari, dipakai berbagai resource
 │   │   ├── Handlers/
 │   │   │   └── GuardedExportHandler.php          # Guard permission + disk privat untuk export Excel/CSV
+│   │   ├── Http/
+│   │   │   └── Requests/
+│   │   │       └── StrongPasswordProfileFormRequest.php  # Validasi password kuat di halaman profil
 │   │   ├── Middleware/
 │   │   │   └── GuardResourcePermission.php       # Guard permission global untuk semua route ber-resource
 │   │   ├── Layouts/
-│   │   │   └── MoonShineLayout.php
+│   │   │   └── MoonShineLayout.php               # Menu sidebar & palet warna panel
 │   │   ├── Pages/
 │   │   │   ├── Dashboard.php
+│   │   │   ├── ProfilePage.php                   # Halaman profil sendiri (ganti password, email terkunci)
 │   │   │   └── RolePermissionsPage.php           # Halaman Hak Akses Role
 │   │   └── Resources/
 │   │       ├── AppMetric/
@@ -90,6 +75,7 @@ monitoring-laravel/
 │   │       ├── TrxPbiLimitReport/
 │   │       ├── TrxPbiSettlementReport/
 │   │       ├── TrxPbiLoaderReport/
+│   │       ├── SystemOnlineReport/
 │   │       ├── WicDbMetricReport/
 │   │       │   ├── Pages/
 │   │       │   │   ├── WicDbMetricReportIndexPage.php  # Table + chart CPU/Memory/Disk
@@ -100,22 +86,55 @@ monitoring-laravel/
 │   │       │   │   ├── WicAppMetricReportIndexPage.php # Table + chart CPU/Memory/Disk
 │   │       │   │   └── WicAppMetricReportFetchPage.php
 │   │       │   └── WicAppMetricReportResource.php
+│   │       ├── SpacexLdnJobExecutionReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── SpacexLdnJobExecutionReportIndexPage.php
+│   │       │   │   └── SpacexLdnJobExecutionReportFetchPage.php
+│   │       │   └── SpacexLdnJobExecutionReportResource.php
+│   │       ├── SpacexLdnFileArchiveReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── SpacexLdnFileArchiveReportIndexPage.php
+│   │       │   │   └── SpacexLdnFileArchiveReportFetchPage.php
+│   │       │   └── SpacexLdnFileArchiveReportResource.php
+│   │       ├── SpacexLdnDcAppMetricReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── SpacexLdnDcAppMetricReportIndexPage.php
+│   │       │   │   └── SpacexLdnDcAppMetricReportFetchPage.php
+│   │       │   └── SpacexLdnDcAppMetricReportResource.php
+│   │       ├── SpacexLdnDcDbMetricReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── SpacexLdnDcDbMetricReportIndexPage.php
+│   │       │   │   └── SpacexLdnDcDbMetricReportFetchPage.php
+│   │       │   └── SpacexLdnDcDbMetricReportResource.php
+│   │       ├── ActivityLog/
 │   │       ├── MoonShineUser/
 │   │       └── MoonShineUserRole/
 │   ├── Providers/
 │   │   ├── AppServiceProvider.php
 │   │   └── MoonShineServiceProvider.php          # Registrasi resource, page, & authorization rules
 │   └── Services/
-│       ├── ElasticsearchService.php              # Query & parse per index (termasuk WIC Metric)
+│       ├── ElasticsearchService.php              # Query & parse per index ES langsung (Engine Notif, mTeleplus, WIC, dll.)
+│       ├── GrafanaElasticsearchService.php        # Query ES via proxy datasource Grafana (dipakai resource Space-X)
 │       ├── EngineNotifReportService.php
 │       ├── MteleplusReportService.php
 │       ├── TrxPbiLimitReportService.php
 │       ├── TrxPbiSettlementReportService.php
 │       ├── TrxPbiLoaderReportService.php
+│       ├── SystemOnlineReportService.php
 │       ├── WicDbMetricReportService.php
-│       └── WicAppMetricReportService.php
+│       ├── WicAppMetricReportService.php
+│       ├── SpacexLdnJobExecutionReportService.php
+│       ├── SpacexLdnFileArchiveReportService.php
+│       ├── SpacexLdnDcAppMetricReportService.php
+│       ├── SpacexLdnDcDbMetricReportService.php
+│       ├── ActivityLogger.php                     # Pencatat Activity Log terpusat
+│       ├── LoginIpThrottle.php                    # Rate limit login per-IP
+│       ├── CsvFormulaGuard.php                    # Netralkan formula injection di export CSV/Excel
+│       └── SafeFilename.php                       # Bersihkan nama file export terjadwal
 ├── config/
-│   └── elasticsearch.php
+│   ├── elasticsearch.php                         # Koneksi ES langsung
+│   ├── grafana.php                               # Koneksi Grafana + mapping UID datasource per key
+│   └── exports.php                               # Mapping folder tujuan tiap auto export CSV
 ├── database/
 │   ├── migrations/
 │   └── seeders/
@@ -153,6 +172,17 @@ php artisan key:generate
 ```
 
 Edit `.env` dan sesuaikan koneksi database MySQL serta koneksi Elasticsearch (host, username, password) sesuai lingkungan masing-masing.
+
+Untuk resource **Space-X** (Job Execution, File Archive, APP/DB Metric DC), data diambil lewat proxy datasource Grafana, bukan koneksi ES langsung — isi juga:
+
+```env
+GRAFANA_HOST=
+GRAFANA_PORT=
+GRAFANA_USERNAME=
+GRAFANA_PASSWORD=
+GRAFANA_REPORTINGKCLN_UID=
+GRAFANA_METRICBEAT_ELKHUB_UID=
+```
 
 Opsional — folder tujuan file export CSV (default: `storage/app/exports` kalau dikosongkan):
 
@@ -215,14 +245,20 @@ Alur harian (ringkas):
 
 | Waktu | Aksi |
 |---|---|
-| Dini hari | Fetch Engine Notif dari Elasticsearch |
-| Dini hari | Fetch mTeleplus dari Elasticsearch |
-| Dini hari | Fetch TrxPBI Limit dari Elasticsearch |
-| Dini hari | Fetch TrxPBI Settlement → **auto export** TrxPBI CSV |
-| Dini hari | Fetch WIC DB Metric dari Elasticsearch |
-| Dini hari | Fetch WIC APP Metric → **auto export** WIC Metric CSV |
-| Dini hari | Fetch TrxPBI Loader → **auto export** TrxPBI Loader CSV |
-| Dini hari | Fetch System Online → **auto export** System Online CSV |
+| 00:01 | Fetch Engine Notif dari Elasticsearch |
+| 00:02 | Fetch mTeleplus dari Elasticsearch |
+| 00:03 | Fetch TrxPBI Limit dari Elasticsearch |
+| 00:04 | Fetch TrxPBI Settlement → **auto export** TrxPBI CSV |
+| 00:05 | Fetch WIC DB Metric dari Elasticsearch |
+| 00:06 | Fetch WIC APP Metric → **auto export** WIC Metric CSV |
+| 00:07 | Fetch TrxPBI Loader → **auto export** TrxPBI Loader CSV |
+| 00:08 | Fetch System Online → **auto export** System Online CSV |
+| 00:09 | Fetch Job Execution (Space-X, server London, via proxy Grafana) |
+| 00:10 | Fetch APP Metric DC (Space-X, via proxy Grafana) |
+| 00:11 | Fetch DB Metric DC (Space-X, via proxy Grafana) |
+| 00:12 | Fetch File Archive (Space-X, server London, via proxy Grafana) |
+
+Resource Space-X (Job Execution, File Archive, APP/DB Metric DC) belum punya auto export CSV terjadwal — export-nya masih manual dari panel.
 
 File CSV disimpan di folder yang dikonfigurasi di `.env` (`TRX_PBI_EXPORT_PATH` / `WIC_METRIC_EXPORT_PATH` / `TRX_PBI_LOADER_EXPORT_PATH` / `SYSTEM_ONLINE_EXPORT_PATH`, dipetakan di `config/exports.php`; dikosongkan berarti memakai `storage/app/exports`), terstruktur per tahun/bulan/tanggal. Nama file dibedakan lewat `kode_prefix` di tabel `report_sources` (mis. `BP` untuk TrxPBI, `SPB` untuk TrxPBI Loader, `SPI` untuk WIC Metric, `SPO` untuk System Online), sehingga aman berdampingan dalam satu folder.
 
@@ -270,6 +306,16 @@ php artisan report:fetch-system-online --date=YYYY-MM-DD     # tanggal tertentu
 php artisan report:fetch-wic-metric
 php artisan report:fetch-wic-app-metric
 
+# Fetch data kemarin dari Elasticsearch via proxy Grafana (Space-X, server London)
+php artisan report:fetch-spacex-ldn-job-execution
+php artisan report:fetch-spacex-ldn-job-execution --date=YYYY-MM-DD
+php artisan report:fetch-spacex-ldn-file-archive
+php artisan report:fetch-spacex-ldn-file-archive --date=YYYY-MM-DD
+php artisan report:fetch-spacex-ldn-dc-app-metric
+php artisan report:fetch-spacex-ldn-dc-app-metric --date=YYYY-MM-DD
+php artisan report:fetch-spacex-ldn-dc-db-metric
+php artisan report:fetch-spacex-ldn-dc-db-metric --date=YYYY-MM-DD
+
 # Export CSV
 php artisan report:export-trx-pbi-csv                          # TrxPBI kemarin
 php artisan report:export-trx-pbi-csv --date=YYYY-MM-DD         # TrxPBI tanggal tertentu
@@ -293,23 +339,26 @@ php artisan optimize:clear
 ```
 Elasticsearch (beberapa index sumber data)
      │
-     ├── Otomatis: scheduler harian (lihat tabel Scheduler di atas)
-     └── Manual: dari panel (form fetch per rentang tanggal, maks 90 hari)
+     ├── Koneksi langsung ── ElasticsearchService (Engine Notif, mTeleplus, TrxPBI, WIC, dll.)
+     └── Proxy Grafana ───── GrafanaElasticsearchService (resource Space-X, server London)
                │
-               ▼
-     Service::fetchAndStore(Carbon $date)
-               │
-               ├── ElasticsearchService::query...()
-               └── Model::updateOrCreate()
+               ├── Otomatis: scheduler harian (lihat tabel Scheduler di atas)
+               └── Manual: dari panel (form fetch per rentang tanggal, maks 90 hari)
                          │
                          ▼
-               Database MySQL
+               Service::fetchAndStore(Carbon $date)
                          │
-                         ├── MoonShine Panel
-                         │        ├── Table (filter, sort, pagination, export Excel/CSV)
-                         │        └── Chart (Fragment async + filter tipe metrik)
-                         │
-                         └── Auto Export CSV (TrxPBI, TrxPBI Loader, System Online & WIC Metric)
+                         └── Model::updateOrCreate()
+                                   │
+                                   ▼
+                         Database MySQL
+                                   │
+                                   ├── MoonShine Panel
+                                   │        ├── Table (filter, sort, pagination, export Excel/CSV)
+                                   │        └── Chart (Fragment async + filter tipe metrik)
+                                   │
+                                   └── Auto Export CSV (TrxPBI, TrxPBI Loader, System Online & WIC Metric —
+                                       resource Space-X belum punya auto export terjadwal)
 ```
 
 ---
@@ -379,19 +428,35 @@ Password akun (baik dibuat admin lewat resource Users, maupun diganti sendiri le
 
 **Mteleplus Reports** — tabel per jam, chart, fetch manual, export Excel & CSV
 
+### Menu: WIC
+
+Gabungan seluruh resource bersumber data WIC dalam satu grup menu, urutan tampil sesuai daftar berikut:
+
 **TrxPBI Limit** — tabel per jam per mata uang, chart (ValueMetric + LineChart + DonutChart), fetch manual, export
 
 **TrxPBI Settlement** — tabel per jam per mata uang, chart (ValueMetric + LineChart + DonutChart), fetch manual, export
 
-**TrxPBI Loader (Batch Job)** — tabel batch job per jam per status; chart Record Processed, Throughput (row/detik), dan Durasi (success vs failed); filter status job; fetch manual; export Excel & CSV
-
 **System Online** — tabel response time rata-rata per jam per service (SVC Service & Login); chart Response Time Avg (ms) per service; filter service; fetch manual; export Excel & CSV
 
-### Menu: WIC Metric
+**WIC APP (HQWIC)** — metrik server WIC APP per jam; chart CPU (Max/Avg/Min %), Memory (Max/Avg/Min %), Disk Usage (% semua disk dalam satu chart); filter tipe metrik; export Excel & CSV
 
-**WIC DB** — metrik server WIC DB per jam; chart CPU (Max/Avg/Min %), Memory (Max/Avg/Min %), Disk Usage (% semua disk dalam satu chart); filter tipe metrik; export Excel & CSV
+**WIC DB (WICADBDC)** — identik dengan WIC APP namun data dari server WIC DB
 
-**WIC APP** — identik dengan WIC DB namun data dari server WIC APP
+**Batch Job (TrxPBI Loader)** — tabel batch job per jam per status; chart Record Processed, Throughput (row/detik), dan Durasi (success vs failed); filter status job; fetch manual; export Excel & CSV
+
+### Menu: Space-X → Server London
+
+Resource reporting luar negeri, khusus server `london_dc`, data diambil lewat proxy datasource Grafana (bukan koneksi ES langsung):
+
+**Job Execution** — tabel status & durasi batch job per hari (`Batch_edw.sh`, `run_edw_dblink.sh`); chart perbandingan durasi minggu ini vs minggu lalu per job; fetch manual; export Excel & CSV
+
+**File Archive** — tabel hasil pengecekan file archive (row count) per hari per grup file; chart tren row count per grup file; fetch manual; export Excel & CSV
+
+**APP Metric (DC)** — metrik server host `HQREPOLDNDC` (CPU, Memory, Disk) dari Metricbeat via Grafana; fetch manual; export Excel & CSV
+
+**DB Metric (DC)** — metrik server host `REPODBLDNDC` (CPU, Memory, Disk) dari Metricbeat via Grafana; fetch manual; export Excel & CSV
+
+> Menu **Server Tokyo** masih kosong (placeholder untuk penambahan server lain nanti).
 
 ---
 

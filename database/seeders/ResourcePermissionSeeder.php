@@ -8,6 +8,7 @@ use App\MoonShine\Resources\SpacexLdnJobExecutionReport\SpacexLdnJobExecutionRep
 use App\MoonShine\Resources\SpacexLdnFileArchiveReport\SpacexLdnFileArchiveReportResource;
 use App\MoonShine\Resources\SpacexLdnDcAppMetricReport\SpacexLdnDcAppMetricReportResource;
 use App\MoonShine\Resources\SpacexLdnDcDbMetricReport\SpacexLdnDcDbMetricReportResource;
+use App\MoonShine\Resources\SpacexNycJobExecutionReport\SpacexNycJobExecutionReportResource;
 use App\MoonShine\Resources\MteleplusReport\MteleplusReportResource;
 use App\MoonShine\Resources\TrxPbiLimitReport\TrxPbiLimitReportResource;
 use App\MoonShine\Resources\TrxPbiLoaderReport\TrxPbiLoaderReportResource;
@@ -37,6 +38,7 @@ class ResourcePermissionSeeder extends Seeder
                 ['resource_class' => SpacexLdnFileArchiveReportResource::class, 'label' => 'File Archive (Space-X)', 'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => SpacexLdnDcAppMetricReportResource::class, 'label' => 'APP Metric (DC) (Space-X)', 'created_at' => now(), 'updated_at' => now()],
                 ['resource_class' => SpacexLdnDcDbMetricReportResource::class, 'label' => 'DB Metric (DC) (Space-X)', 'created_at' => now(), 'updated_at' => now()],
+                ['resource_class' => SpacexNycJobExecutionReportResource::class, 'label' => 'Job Execution New York (Space-X)', 'created_at' => now(), 'updated_at' => now()],
             ],
         );
     }

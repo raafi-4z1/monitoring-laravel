@@ -10,6 +10,8 @@ use App\MoonShine\Resources\EngineNotifReport\EngineNotifReportResource;
 use App\MoonShine\Resources\EngineNotifReport\Pages\EngineNotifReportFetchPage;
 use App\MoonShine\Resources\SpacexLdnJobExecutionReport\SpacexLdnJobExecutionReportResource;
 use App\MoonShine\Resources\SpacexLdnJobExecutionReport\Pages\SpacexLdnJobExecutionReportFetchPage;
+use App\MoonShine\Resources\SpacexNycJobExecutionReport\SpacexNycJobExecutionReportResource;
+use App\MoonShine\Resources\SpacexNycJobExecutionReport\Pages\SpacexNycJobExecutionReportFetchPage;
 use App\MoonShine\Resources\SpacexLdnFileArchiveReport\SpacexLdnFileArchiveReportResource;
 use App\MoonShine\Resources\SpacexLdnFileArchiveReport\Pages\SpacexLdnFileArchiveReportFetchPage;
 use App\MoonShine\Resources\SpacexLdnDcAppMetricReport\SpacexLdnDcAppMetricReportResource;
@@ -144,6 +146,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 SpacexLdnFileArchiveReportResource::class,
                 SpacexLdnDcAppMetricReportResource::class,
                 SpacexLdnDcDbMetricReportResource::class,
+                SpacexNycJobExecutionReportResource::class,
             ])
             ->pages([
                 ...$core->getConfig()->getPages(),
@@ -160,6 +163,7 @@ class MoonShineServiceProvider extends ServiceProvider
                 SpacexLdnFileArchiveReportFetchPage::class,
                 SpacexLdnDcAppMetricReportFetchPage::class,
                 SpacexLdnDcDbMetricReportFetchPage::class,
+                SpacexNycJobExecutionReportFetchPage::class,
             ]);
 
         $core->getConfig()->authorizationRules(

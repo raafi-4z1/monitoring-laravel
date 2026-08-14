@@ -11,6 +11,7 @@ use App\MoonShine\Resources\SpacexLdnJobExecutionReport\SpacexLdnJobExecutionRep
 use App\MoonShine\Resources\SpacexLdnFileArchiveReport\SpacexLdnFileArchiveReportResource;
 use App\MoonShine\Resources\SpacexLdnDcAppMetricReport\SpacexLdnDcAppMetricReportResource;
 use App\MoonShine\Resources\SpacexLdnDcDbMetricReport\SpacexLdnDcDbMetricReportResource;
+use App\MoonShine\Resources\SpacexNycJobExecutionReport\SpacexNycJobExecutionReportResource;
 use App\MoonShine\Resources\MasterAplikasi\MasterAplikasiResource;
 use App\MoonShine\Resources\MasterMetrik\MasterMetrikResource;
 use App\MoonShine\Resources\ReportSource\ReportSourceResource;
@@ -157,12 +158,18 @@ final class MoonShineLayout extends AppLayout
                         ->icon('circle-stack')
                         ->canSee($canSee(SpacexLdnDcDbMetricReportResource::class)),
                 ])->icon('server'),
+                MenuGroup::make('Server New York', [
+                    MenuItem::make(SpacexNycJobExecutionReportResource::class, 'Job Execution')
+                        ->icon('cog-6-tooth')
+                        ->canSee($canSee(SpacexNycJobExecutionReportResource::class)),
+                ])->icon('server'),
                 MenuGroup::make('Server Tokyo', [])->icon('server')->canSee(fn () => true),
             ])->icon('rocket-launch')->canSee($anyCanSee([
                 SpacexLdnJobExecutionReportResource::class,
                 SpacexLdnFileArchiveReportResource::class,
                 SpacexLdnDcAppMetricReportResource::class,
                 SpacexLdnDcDbMetricReportResource::class,
+                SpacexNycJobExecutionReportResource::class,
             ])),
         ];
     }

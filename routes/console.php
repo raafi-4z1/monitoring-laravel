@@ -80,3 +80,9 @@ Schedule::command('report:fetch-spacex-nyc-job-execution')
     ->dailyAt('00:13')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/spacex-nyc-job-execution-fetch.log'));
+
+// File Archive (Space-X / Reporting Luar Negeri, server New York)
+Schedule::command('report:fetch-spacex-nyc-file-archive')
+    ->dailyAt('00:14')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/spacex-nyc-file-archive-fetch.log'));

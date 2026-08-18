@@ -86,3 +86,9 @@ Schedule::command('report:fetch-spacex-nyc-file-archive')
     ->dailyAt('00:14')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/spacex-nyc-file-archive-fetch.log'));
+
+// APP Metric (DC) (HQREPONYADC / Space-X Server New York)
+Schedule::command('report:fetch-spacex-nyc-dc-app-metric')
+    ->dailyAt('00:15')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/spacex-nyc-dc-app-metric-fetch.log'));

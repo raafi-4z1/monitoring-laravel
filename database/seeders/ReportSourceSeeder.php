@@ -144,6 +144,17 @@ class ReportSourceSeeder extends Seeder
                     'updated_at'         => now(),
                 ],
                 [
+                    'service_name'       => 'app_storage_dc_nyc',
+                    'app_id'             => 'AFO',
+                    'data_source'        => 'Grafana',
+                    'data_source_name'   => 'metricbeat-*',
+                    'service_integrator' => 'HQREPONYADC',
+                    'host_ip'            => '192.168.33.195',
+                    'kode_prefix'        => null,
+                    'created_at'         => now(),
+                    'updated_at'         => now(),
+                ],
+                [
                     'service_name'       => 'app_storage_dc',
                     'app_id'             => 'AFO',
                     'data_source'        => 'Grafana',

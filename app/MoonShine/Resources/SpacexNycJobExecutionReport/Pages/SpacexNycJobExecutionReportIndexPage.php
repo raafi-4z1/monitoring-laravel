@@ -43,7 +43,7 @@ class SpacexNycJobExecutionReportIndexPage extends IndexPage
     private const DAY_NAMES_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
     /**
-     * Cuma 2 job yang dipantau (lihat SpacexNycJobExecutionReportService::JOB_NAMES) - status selalu
+     * Cuma 2 job yang dipantau (lihat SpacexJobExecutionReportService::JOB_NAMES) - status selalu
      * SUCCESS (job yang gagal tidak masuk log Grafana sama sekali), jadi tidak ada chart status.
      */
     protected function assets(): array

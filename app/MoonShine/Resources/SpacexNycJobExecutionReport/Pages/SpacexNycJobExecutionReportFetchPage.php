@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\SpacexNycJobExecutionReport\Pages;
 
+use App\Enums\SpacexCity;
 use App\MoonShine\Concerns\GuardsFetchPageAccess;
 use App\MoonShine\Resources\SpacexNycJobExecutionReport\SpacexNycJobExecutionReportResource;
-use App\Services\SpacexNycJobExecutionReportService;
+use App\Services\SpacexJobExecutionReportService;
 use Carbon\Carbon;
 use MoonShine\Contracts\UI\ComponentContract;
 use MoonShine\Crud\JsonResponse;
@@ -165,13 +166,13 @@ class SpacexNycJobExecutionReportFetchPage extends FormPage
         }
 
         try {
-            $service = app(SpacexNycJobExecutionReportService::class);
+            $service = app(SpacexJobExecutionReportService::class);
             $success = 0;
             $failed  = 0;
             $current = $from->copy();
 
             while ($current->lte($to)) {
-                $result = $service->fetchAndStore($current->copy());
+                $result = $service->fetchAndStore($current->copy(), SpacexCity::Nyc);
                 $result ? $success++ : $failed++;
                 $current->addDay();
             }

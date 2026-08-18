@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Enums\SpacexCity;
 use App\Services\ActivityLogger;
-use App\Services\SpacexNycFileArchiveReportService;
+use App\Services\SpacexFileArchiveReportService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -16,7 +17,7 @@ class FetchSpacexNycFileArchiveReport extends Command
 
     protected $description = 'Fetch data File Archive server New York (Space-X / Reporting Luar Negeri) dari Elasticsearch lewat proxy Grafana';
 
-    public function handle(SpacexNycFileArchiveReportService $service): int
+    public function handle(SpacexFileArchiveReportService $service): int
     {
         $date = $this->option('date')
             ? Carbon::parse($this->option('date'))
@@ -24,7 +25,7 @@ class FetchSpacexNycFileArchiveReport extends Command
 
         $this->info("Fetching File Archive (New York) untuk: {$date->format('Y-m-d')}");
 
-        $ok = $service->fetchAndStore($date);
+        $ok = $service->fetchAndStore($date, SpacexCity::Nyc);
 
         if ($ok) {
             $this->info('Berhasil disimpan.');

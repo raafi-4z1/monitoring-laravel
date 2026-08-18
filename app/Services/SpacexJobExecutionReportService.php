@@ -4,33 +4,69 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\SpacexLdnJobExecutionReport;
+use App\Enums\SpacexCity;
 use App\Models\ReportSource;
+use App\Models\SpacexLdnJobExecutionReport;
+use App\Models\SpacexNycJobExecutionReport;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
-class SpacexLdnJobExecutionReportService
+/**
+ * Satu service generik untuk Job Execution di semua server Space-X - query & parsing-nya
+ * identik antar server (index reportingkcln-* via proxy Grafana), yang beda cuma tiga hal:
+ * service_name (buat lookup ReportSource), nilai filter "server" di query_string, dan Model
+ * tujuan (masing-masing kota tetap punya tabel sendiri, lihat CITIES di bawah).
+ *
+ * Nambah server baru = tambah satu entri di CITIES (plus Model/Migration/Resource/Command
+ * terpisah seperti biasa) - TIDAK perlu bikin class service baru lagi.
+ */
+class SpacexJobExecutionReportService
 {
-    public const SERVICE_NAME = 'job_execution';
-
     /**
-     * Cuma 2 job ini yang diambil dari log_category BATCH_JOB - sesuai permintaan awal,
+     * Cuma 2 job ini yang diambil dari log_category BATCH_JOB - sama untuk semua server,
      * job lain dalam kategori yang sama (get_f1_file.sh, get_ext_file.sh, dll.) diabaikan.
      */
     private const JOB_NAMES = ['Batch_edw.sh', 'run_edw_dblink.sh'];
+
+    /**
+     * @var array<string, array{service_name: string, server: string, model: class-string<Model>}>
+     */
+    private const CITIES = [
+        'ldn' => [
+            'service_name' => 'job_execution',
+            'server'       => 'london_dc',
+            'model'        => SpacexLdnJobExecutionReport::class,
+        ],
+        'nyc' => [
+            'service_name' => 'job_execution_nyc',
+            'server'       => 'newyork_dc',
+            'model'        => SpacexNycJobExecutionReport::class,
+        ],
+    ];
 
     public function __construct(
         protected GrafanaElasticsearchService $grafana
     ) {}
 
-    public function fetchAndStore(Carbon $date): bool
+    public function fetchAndStore(Carbon $date, SpacexCity $city): bool
     {
+        $config = self::CITIES[$city->value] ?? null;
+
+        if ($config === null) {
+            Log::channel('daily')->error("SpacexJobExecutionReportService: kota '{$city->value}' belum dikonfigurasi di konstanta CITIES.");
+
+            return false;
+        }
+
+        [$serviceName, $server, $modelClass] = [$config['service_name'], $config['server'], $config['model']];
+
         $dateStr  = $date->format('Y-m-d');
-        $sourceId = ReportSource::where('service_name', self::SERVICE_NAME)->value('id');
+        $sourceId = ReportSource::where('service_name', $serviceName)->value('id');
 
         if ($sourceId === null) {
             Log::channel('daily')->warning(
-                "SpacexLdnJobExecutionReportService: report_source dengan service_name '" . self::SERVICE_NAME . "' tidak ditemukan. "
+                "SpacexJobExecutionReportService [{$city->label()}]: report_source dengan service_name '{$serviceName}' tidak ditemukan. "
                 . 'Data akan tersimpan dengan report_source_id NULL. Cek tabel report_sources.'
             );
         }
@@ -49,7 +85,7 @@ class SpacexLdnJobExecutionReportService
                     'query' => [
                         'bool' => [
                             'must'   => [
-                                ['query_string' => ['query' => 'log_category:"BATCH_JOB" AND server:"london_dc"']],
+                                ['query_string' => ['query' => "log_category:\"BATCH_JOB\" AND server:\"{$server}\""]],
                             ],
                             'filter' => [
                                 [
@@ -77,13 +113,13 @@ class SpacexLdnJobExecutionReportService
                 ->filter(fn (array $doc) => in_array($doc['job_name'] ?? null, self::JOB_NAMES, true));
 
             if ($rows->isEmpty()) {
-                Log::warning("SpacexLdnJobExecutionReport: tidak ada data untuk {$dateStr}");
+                Log::warning("SpacexJobExecutionReportService [{$city->label()}]: tidak ada data untuk {$dateStr}");
 
                 return false;
             }
 
             foreach ($rows as $doc) {
-                SpacexLdnJobExecutionReport::updateOrCreate(
+                $modelClass::updateOrCreate(
                     [
                         'job_name' => $doc['job_name'],
                         'trx_date' => $dateStr,
@@ -101,11 +137,11 @@ class SpacexLdnJobExecutionReportService
                 );
             }
 
-            Log::info("SpacexLdnJobExecutionReport: berhasil simpan {$rows->count()} baris untuk {$dateStr}");
+            Log::info("SpacexJobExecutionReportService [{$city->label()}]: berhasil simpan {$rows->count()} baris untuk {$dateStr}");
 
             return true;
         } catch (\Throwable $e) {
-            Log::error("SpacexLdnJobExecutionReport: gagal - {$e->getMessage()}");
+            Log::error("SpacexJobExecutionReportService [{$city->label()}]: gagal - {$e->getMessage()}");
 
             return false;
         }

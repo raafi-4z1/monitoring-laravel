@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Enums\SpacexCity;
 use App\Services\ActivityLogger;
-use App\Services\SpacexNycDcAppMetricReportService;
+use App\Services\SpacexDcAppMetricReportService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -16,7 +17,7 @@ class FetchSpacexNycDcAppMetricReport extends Command
 
     protected $description = 'Fetch data APP Metric (DC) (HQREPONYADC / Space-X Server New York) dari Elasticsearch lewat proxy Grafana';
 
-    public function handle(SpacexNycDcAppMetricReportService $service): int
+    public function handle(SpacexDcAppMetricReportService $service): int
     {
         $date = $this->option('date')
             ? Carbon::parse($this->option('date'))
@@ -24,7 +25,7 @@ class FetchSpacexNycDcAppMetricReport extends Command
 
         $this->info("Fetching APP Metric (DC) (HQREPONYADC) untuk: {$date->format('Y-m-d')}");
 
-        $ok = $service->fetchAndStore($date);
+        $ok = $service->fetchAndStore($date, SpacexCity::Nyc);
 
         if ($ok) {
             $this->info('Berhasil disimpan.');

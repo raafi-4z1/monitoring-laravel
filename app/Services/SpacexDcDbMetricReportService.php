@@ -4,43 +4,69 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\SpacexCity;
 use App\Models\ReportSource;
-use App\Models\SpacexLdnDcAppMetricReport;
+use App\Models\SpacexLdnDcDbMetricReport;
+use App\Models\SpacexNycDcDbMetricReport;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Sumber data: index Metricbeat ("METRICBEAT ELKHUB") diakses lewat proxy datasource Grafana
- * (GrafanaElasticsearchService), BUKAN cluster ES langsung seperti WicAppMetricReportService.
+ * Satu service generik untuk DB Metric (DC) di semua server Space-X - lihat
+ * SpacexJobExecutionReportService untuk penjelasan pola CITIES. Host per kota SUDAH data-driven
+ * dari tabel report_sources (host_ip / service_integrator, lihat hostFilter()), jadi yang perlu
+ * dikonfigurasi per kota di sini cuma service_name (buat lookup ReportSource) dan Model tujuan.
  *
- * Query/parse di sini SENGAJA meniru bentuk WicAppMetricReportService (date_histogram per jam +
- * max/min/avg/p95, disk di-grup per mount_point dengan top_hits untuk snapshot terakhir) karena
- * nama field di index ini sama persis (system.cpu.total.norm.pct, system.memory.actual.used.pct,
- * system.filesystem.*). BEDA PENTING yang sudah diverifikasi langsung ke Grafana (bukan asumsi):
- * index ini pakai mapping ECS standar, jadi agent.name/host.ip/system.filesystem.mount_point
- * SUDAH keyword-type - TIDAK perlu (dan TIDAK BOLEH, akan 0 hasil) pakai suffix ".keyword" seperti
- * di xmb-ls*. metricset.name sendiri text-type tanpa keyword multi-field yang konsisten di semua
- * backing index data stream-nya, jadi filternya pakai "match" (bukan "term .keyword").
+ * Sumber data: index Metricbeat ("METRICBEAT ELKHUB") diakses lewat proxy datasource Grafana,
+ * datasource sama persis dengan SpacexDcAppMetricReportService (host beda, cluster ES sama -
+ * satu index metricbeat-* menampung semua host). Host di sini server DB (RHEL) - disk_path
+ * berupa mount point Linux (/oradata, /oralog, /u01, dst.), bukan drive letter, dan TIDAK ADA
+ * pengecualian "Z:" karena itu spesifik konsep Windows network drive yang tidak relevan di host
+ * Linux ini. Sudah diverifikasi live untuk London (REPODBLDNDC) & New York (REPODBNYADC),
+ * mount point identik di kedua host.
  */
-class SpacexLdnDcAppMetricReportService
+class SpacexDcDbMetricReportService
 {
-    public const SERVICE_NAME = 'app_storage_dc';
-
     private const INDEX = 'metricbeat-*';
+
+    /**
+     * @var array<string, array{service_name: string, model: class-string<Model>}>
+     */
+    private const CITIES = [
+        'ldn' => [
+            'service_name' => 'db_storage_dc',
+            'model'        => SpacexLdnDcDbMetricReport::class,
+        ],
+        'nyc' => [
+            'service_name' => 'db_storage_dc_nyc',
+            'model'        => SpacexNycDcDbMetricReport::class,
+        ],
+    ];
 
     public function __construct(
         protected GrafanaElasticsearchService $grafana
     ) {}
 
-    public function fetchAndStore(Carbon $date): bool
+    public function fetchAndStore(Carbon $date, SpacexCity $city): bool
     {
+        $config = self::CITIES[$city->value] ?? null;
+
+        if ($config === null) {
+            Log::channel('daily')->error("SpacexDcDbMetricReportService: kota '{$city->value}' belum dikonfigurasi di konstanta CITIES.");
+
+            return false;
+        }
+
+        [$serviceName, $modelClass] = [$config['service_name'], $config['model']];
+
         $dateStr      = $date->format('Y-m-d');
-        $reportSource = ReportSource::where('service_name', self::SERVICE_NAME)->first();
+        $reportSource = ReportSource::where('service_name', $serviceName)->first();
 
         if ($reportSource === null || (blank($reportSource->host_ip) && blank($reportSource->service_integrator))) {
             Log::channel('daily')->warning(
-                "SpacexLdnDcAppMetricReportService: report_source dengan service_name '" . self::SERVICE_NAME . "' "
+                "SpacexDcDbMetricReportService [{$city->label()}]: report_source dengan service_name '{$serviceName}' "
                 . 'tidak ditemukan, atau host_ip & Service Integrator (hostname) dua-duanya kosong. '
                 . 'Fetch dibatalkan — isi salah satunya di menu Report Sources.'
             );
@@ -61,7 +87,7 @@ class SpacexLdnDcAppMetricReportService
 
             foreach ($cpuData as $hourKey => $v) {
                 [$dateStr2, $hourInt] = explode(' ', $hourKey);
-                SpacexLdnDcAppMetricReport::updateOrCreate(
+                $modelClass::updateOrCreate(
                     ['trx_date' => $dateStr2, 'trx_hour' => (int) $hourInt, 'metric_type' => 'cpu', 'disk_path' => ''],
                     ['report_source_id' => $sourceId, 'max_pct' => $v['max_pct'], 'min_pct' => $v['min_pct'], 'avg_pct' => $v['avg_pct'], 'p95_pct' => $v['p95_pct']]
                 );
@@ -70,7 +96,7 @@ class SpacexLdnDcAppMetricReportService
 
             foreach ($memData as $hourKey => $v) {
                 [$dateStr2, $hourInt] = explode(' ', $hourKey);
-                SpacexLdnDcAppMetricReport::updateOrCreate(
+                $modelClass::updateOrCreate(
                     ['trx_date' => $dateStr2, 'trx_hour' => (int) $hourInt, 'metric_type' => 'memory', 'disk_path' => ''],
                     ['report_source_id' => $sourceId, 'max_pct' => $v['max_pct'], 'min_pct' => $v['min_pct'], 'avg_pct' => $v['avg_pct'], 'p95_pct' => $v['p95_pct']]
                 );
@@ -80,9 +106,8 @@ class SpacexLdnDcAppMetricReportService
             foreach ($diskData as $hourKey => $disks) {
                 [$dateStr2, $hourInt] = explode(' ', $hourKey);
                 foreach ($disks as $disk) {
-                    $rawPath  = $disk['disk_path'];
-                    $diskPath = rtrim(str_replace([':\\', ':/'], '', $rawPath), '/\\') ?: $rawPath;
-                    SpacexLdnDcAppMetricReport::updateOrCreate(
+                    $diskPath = $disk['disk_path'];
+                    $modelClass::updateOrCreate(
                         ['trx_date' => $dateStr2, 'trx_hour' => (int) $hourInt, 'metric_type' => 'disk', 'disk_path' => $diskPath],
                         [
                             'report_source_id' => $sourceId,
@@ -100,16 +125,16 @@ class SpacexLdnDcAppMetricReportService
             }
 
             if ($count === 0) {
-                Log::warning("SpacexLdnDcAppMetricReport: tidak ada data untuk {$dateStr}");
+                Log::warning("SpacexDcDbMetricReportService [{$city->label()}]: tidak ada data untuk {$dateStr}");
 
                 return false;
             }
 
-            Log::info("SpacexLdnDcAppMetricReport: berhasil simpan {$count} baris untuk {$dateStr}");
+            Log::info("SpacexDcDbMetricReportService [{$city->label()}]: berhasil simpan {$count} baris untuk {$dateStr}");
 
             return true;
         } catch (\Throwable $e) {
-            Log::error("SpacexLdnDcAppMetricReport: gagal - {$e->getMessage()}");
+            Log::error("SpacexDcDbMetricReportService [{$city->label()}]: gagal - {$e->getMessage()}");
 
             return false;
         }
@@ -126,15 +151,6 @@ class SpacexLdnDcAppMetricReportService
         }
 
         return ['term' => ['agent.name' => $hostHostname]];
-    }
-
-    /**
-     * NOT system.filesystem.mount_point : "Z:\\" - permintaan eksplisit, drive Z: adalah network
-     * share terpetakan yang tidak relevan dipantau (sesuai instruksi awal, bukan disk lokal).
-     */
-    private function excludeZDrive(): array
-    {
-        return ['term' => ['system.filesystem.mount_point' => 'Z:\\']];
     }
 
     private function timeRangeFilter(string $dateFrom, string $dateTo): array
@@ -212,14 +228,13 @@ class SpacexLdnDcAppMetricReportService
                         $this->hostFilter($hostIp, $hostHostname),
                         ['match' => ['metricset.name' => 'filesystem']],
                     ],
-                    'must_not' => [$this->excludeZDrive()],
-                    'must'     => [$this->timeRangeFilter($dateFrom, $dateTo)],
+                    'must' => [$this->timeRangeFilter($dateFrom, $dateTo)],
                 ]],
                 'aggs' => ['per_hour' => [
                     'date_histogram' => ['field' => '@timestamp', 'calendar_interval' => '1h', 'format' => 'yyyy-MM-dd HH:mm', 'time_zone' => '+07:00', 'min_doc_count' => 1],
                     'aggs' => [
                         'by_disk' => [
-                            'terms' => ['field' => 'system.filesystem.mount_point', 'size' => 20],
+                            'terms' => ['field' => 'system.filesystem.mount_point', 'size' => 30],
                             'aggs'  => [
                                 'last_doc' => [
                                     'top_hits' => [

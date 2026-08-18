@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\SpacexNycDcDbMetricReport\Pages;
 
+use App\Enums\SpacexCity;
 use App\MoonShine\Concerns\GuardsFetchPageAccess;
 use App\MoonShine\Resources\SpacexNycDcDbMetricReport\SpacexNycDcDbMetricReportResource;
-use App\Services\SpacexNycDcDbMetricReportService;
+use App\Services\SpacexDcDbMetricReportService;
 use Carbon\Carbon;
 use MoonShine\Contracts\UI\ComponentContract;
 use MoonShine\Crud\JsonResponse;
@@ -165,13 +166,13 @@ class SpacexNycDcDbMetricReportFetchPage extends FormPage
         }
 
         try {
-            $service = app(SpacexNycDcDbMetricReportService::class);
+            $service = app(SpacexDcDbMetricReportService::class);
             $success = 0;
             $failed  = 0;
             $current = $from->copy();
 
             while ($current->lte($to)) {
-                $result = $service->fetchAndStore($current->copy());
+                $result = $service->fetchAndStore($current->copy(), SpacexCity::Nyc);
                 $result ? $success++ : $failed++;
                 $current->addDay();
             }

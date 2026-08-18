@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Enums\SpacexCity;
 use App\Services\ActivityLogger;
-use App\Services\SpacexNycJobExecutionReportService;
+use App\Services\SpacexJobExecutionReportService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -16,7 +17,7 @@ class FetchSpacexNycJobExecutionReport extends Command
 
     protected $description = 'Fetch data Job Execution server New York (Space-X / Reporting Luar Negeri) dari Elasticsearch lewat proxy Grafana';
 
-    public function handle(SpacexNycJobExecutionReportService $service): int
+    public function handle(SpacexJobExecutionReportService $service): int
     {
         $date = $this->option('date')
             ? Carbon::parse($this->option('date'))
@@ -24,7 +25,7 @@ class FetchSpacexNycJobExecutionReport extends Command
 
         $this->info("Fetching Job Execution (New York) untuk: {$date->format('Y-m-d')}");
 
-        $ok = $service->fetchAndStore($date);
+        $ok = $service->fetchAndStore($date, SpacexCity::Nyc);
 
         if ($ok) {
             $this->info('Berhasil disimpan.');

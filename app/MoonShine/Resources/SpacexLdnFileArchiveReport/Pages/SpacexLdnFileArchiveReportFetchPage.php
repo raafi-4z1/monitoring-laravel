@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\MoonShine\Resources\SpacexLdnFileArchiveReport\Pages;
 
+use App\Enums\SpacexCity;
 use App\MoonShine\Concerns\GuardsFetchPageAccess;
 use App\MoonShine\Resources\SpacexLdnFileArchiveReport\SpacexLdnFileArchiveReportResource;
-use App\Services\SpacexLdnFileArchiveReportService;
+use App\Services\SpacexFileArchiveReportService;
 use Carbon\Carbon;
 use MoonShine\Contracts\UI\ComponentContract;
 use MoonShine\Crud\JsonResponse;
@@ -165,13 +166,13 @@ class SpacexLdnFileArchiveReportFetchPage extends FormPage
         }
 
         try {
-            $service = app(SpacexLdnFileArchiveReportService::class);
+            $service = app(SpacexFileArchiveReportService::class);
             $success = 0;
             $failed  = 0;
             $current = $from->copy();
 
             while ($current->lte($to)) {
-                $result = $service->fetchAndStore($current->copy());
+                $result = $service->fetchAndStore($current->copy(), SpacexCity::Ldn);
                 $result ? $success++ : $failed++;
                 $current->addDay();
             }

@@ -23,10 +23,14 @@ monitoring-laravel/
 │   │       ├── FetchWicDbMetricReport.php        # Fetch WIC DB Metric
 │   │       ├── FetchWicAppMetricReport.php       # Fetch WIC APP Metric
 │   │       ├── ExportWicMetricCsv.php            # Export gabungan WIC DB+APP ke CSV
-│   │       ├── FetchSpacexLdnJobExecutionReport.php  # Fetch Job Execution (via proxy Grafana)
-│   │       ├── FetchSpacexLdnFileArchiveReport.php   # Fetch File Archive (via proxy Grafana)
-│   │       ├── FetchSpacexLdnDcAppMetricReport.php   # Fetch APP Metric DC (via proxy Grafana)
-│   │       └── FetchSpacexLdnDcDbMetricReport.php    # Fetch DB Metric DC (via proxy Grafana)
+│   │       ├── FetchSpacexLdnJobExecutionReport.php  # Fetch Job Execution London (via proxy Grafana)
+│   │       ├── FetchSpacexLdnFileArchiveReport.php   # Fetch File Archive London (via proxy Grafana)
+│   │       ├── FetchSpacexLdnDcAppMetricReport.php   # Fetch APP Metric DC London (via proxy Grafana)
+│   │       ├── FetchSpacexLdnDcDbMetricReport.php    # Fetch DB Metric DC London (via proxy Grafana)
+│   │       ├── FetchSpacexNycJobExecutionReport.php  # Fetch Job Execution New York (via proxy Grafana)
+│   │       ├── FetchSpacexNycFileArchiveReport.php   # Fetch File Archive New York (via proxy Grafana)
+│   │       ├── FetchSpacexNycDcAppMetricReport.php   # Fetch APP Metric DC New York (via proxy Grafana)
+│   │       └── FetchSpacexNycDcDbMetricReport.php    # Fetch DB Metric DC New York (via proxy Grafana)
 │   ├── Enums/
 │   │   └── MetricUnit.php
 │   ├── Models/
@@ -45,7 +49,11 @@ monitoring-laravel/
 │   │   ├── SpacexLdnJobExecutionReport.php       # Batch job server London (via proxy Grafana)
 │   │   ├── SpacexLdnFileArchiveReport.php        # Hasil pengecekan file archive server London
 │   │   ├── SpacexLdnDcAppMetricReport.php        # Metrik server APP DC London (HQREPOLDNDC)
-│   │   └── SpacexLdnDcDbMetricReport.php         # Metrik server DB DC London (REPODBLDNDC)
+│   │   ├── SpacexLdnDcDbMetricReport.php         # Metrik server DB DC London (REPODBLDNDC)
+│   │   ├── SpacexNycJobExecutionReport.php       # Batch job server New York (via proxy Grafana)
+│   │   ├── SpacexNycFileArchiveReport.php        # Hasil pengecekan file archive server New York
+│   │   ├── SpacexNycDcAppMetricReport.php        # Metrik server APP DC New York (HQREPONYADC)
+│   │   └── SpacexNycDcDbMetricReport.php         # Metrik server DB DC New York (REPODBNYADC)
 │   ├── MoonShine/
 │   │   ├── Auth/
 │   │   │   └── ThrottleLoginByIp.php             # Rate limit login per-IP (lapis tambahan di atas bawaan MoonShine)
@@ -106,6 +114,26 @@ monitoring-laravel/
 │   │       │   │   ├── SpacexLdnDcDbMetricReportIndexPage.php
 │   │       │   │   └── SpacexLdnDcDbMetricReportFetchPage.php
 │   │       │   └── SpacexLdnDcDbMetricReportResource.php
+│   │       ├── SpacexNycJobExecutionReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── SpacexNycJobExecutionReportIndexPage.php
+│   │       │   │   └── SpacexNycJobExecutionReportFetchPage.php
+│   │       │   └── SpacexNycJobExecutionReportResource.php
+│   │       ├── SpacexNycFileArchiveReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── SpacexNycFileArchiveReportIndexPage.php
+│   │       │   │   └── SpacexNycFileArchiveReportFetchPage.php
+│   │       │   └── SpacexNycFileArchiveReportResource.php
+│   │       ├── SpacexNycDcAppMetricReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── SpacexNycDcAppMetricReportIndexPage.php
+│   │       │   │   └── SpacexNycDcAppMetricReportFetchPage.php
+│   │       │   └── SpacexNycDcAppMetricReportResource.php
+│   │       ├── SpacexNycDcDbMetricReport/
+│   │       │   ├── Pages/
+│   │       │   │   ├── SpacexNycDcDbMetricReportIndexPage.php
+│   │       │   │   └── SpacexNycDcDbMetricReportFetchPage.php
+│   │       │   └── SpacexNycDcDbMetricReportResource.php
 │   │       ├── ActivityLog/
 │   │       ├── MoonShineUser/
 │   │       └── MoonShineUserRole/
@@ -127,6 +155,10 @@ monitoring-laravel/
 │       ├── SpacexLdnFileArchiveReportService.php
 │       ├── SpacexLdnDcAppMetricReportService.php
 │       ├── SpacexLdnDcDbMetricReportService.php
+│       ├── SpacexNycJobExecutionReportService.php
+│       ├── SpacexNycFileArchiveReportService.php
+│       ├── SpacexNycDcAppMetricReportService.php
+│       ├── SpacexNycDcDbMetricReportService.php
 │       ├── ActivityLogger.php                     # Pencatat Activity Log terpusat
 │       ├── LoginIpThrottle.php                    # Rate limit login per-IP
 │       ├── CsvFormulaGuard.php                    # Netralkan formula injection di export CSV/Excel
@@ -254,11 +286,15 @@ Alur harian (ringkas):
 | 00:07 | Fetch TrxPBI Loader → **auto export** TrxPBI Loader CSV |
 | 00:08 | Fetch System Online → **auto export** System Online CSV |
 | 00:09 | Fetch Job Execution (Space-X, server London, via proxy Grafana) |
-| 00:10 | Fetch APP Metric DC (Space-X, via proxy Grafana) |
-| 00:11 | Fetch DB Metric DC (Space-X, via proxy Grafana) |
+| 00:10 | Fetch APP Metric DC (Space-X, server London, via proxy Grafana) |
+| 00:11 | Fetch DB Metric DC (Space-X, server London, via proxy Grafana) |
 | 00:12 | Fetch File Archive (Space-X, server London, via proxy Grafana) |
+| 00:13 | Fetch Job Execution (Space-X, server New York, via proxy Grafana) |
+| 00:14 | Fetch File Archive (Space-X, server New York, via proxy Grafana) |
+| 00:15 | Fetch APP Metric DC (Space-X, server New York, via proxy Grafana) |
+| 00:16 | Fetch DB Metric DC (Space-X, server New York, via proxy Grafana) |
 
-Resource Space-X (Job Execution, File Archive, APP/DB Metric DC) belum punya auto export CSV terjadwal — export-nya masih manual dari panel.
+Resource Space-X (Job Execution, File Archive, APP/DB Metric DC — server London maupun New York) belum punya auto export CSV terjadwal — export-nya masih manual dari panel.
 
 File CSV disimpan di folder yang dikonfigurasi di `.env` (`TRX_PBI_EXPORT_PATH` / `WIC_METRIC_EXPORT_PATH` / `TRX_PBI_LOADER_EXPORT_PATH` / `SYSTEM_ONLINE_EXPORT_PATH`, dipetakan di `config/exports.php`; dikosongkan berarti memakai `storage/app/exports`), terstruktur per tahun/bulan/tanggal. Nama file dibedakan lewat `kode_prefix` di tabel `report_sources` (mis. `BP` untuk TrxPBI, `SPB` untuk TrxPBI Loader, `SPI` untuk WIC Metric, `SPO` untuk System Online), sehingga aman berdampingan dalam satu folder.
 
@@ -316,6 +352,16 @@ php artisan report:fetch-spacex-ldn-dc-app-metric --date=YYYY-MM-DD
 php artisan report:fetch-spacex-ldn-dc-db-metric
 php artisan report:fetch-spacex-ldn-dc-db-metric --date=YYYY-MM-DD
 
+# Fetch data kemarin dari Elasticsearch via proxy Grafana (Space-X, server New York)
+php artisan report:fetch-spacex-nyc-job-execution
+php artisan report:fetch-spacex-nyc-job-execution --date=YYYY-MM-DD
+php artisan report:fetch-spacex-nyc-file-archive
+php artisan report:fetch-spacex-nyc-file-archive --date=YYYY-MM-DD
+php artisan report:fetch-spacex-nyc-dc-app-metric
+php artisan report:fetch-spacex-nyc-dc-app-metric --date=YYYY-MM-DD
+php artisan report:fetch-spacex-nyc-dc-db-metric
+php artisan report:fetch-spacex-nyc-dc-db-metric --date=YYYY-MM-DD
+
 # Export CSV
 php artisan report:export-trx-pbi-csv                          # TrxPBI kemarin
 php artisan report:export-trx-pbi-csv --date=YYYY-MM-DD         # TrxPBI tanggal tertentu
@@ -340,7 +386,7 @@ php artisan optimize:clear
 Elasticsearch (beberapa index sumber data)
      │
      ├── Koneksi langsung ── ElasticsearchService (Engine Notif, mTeleplus, TrxPBI, WIC, dll.)
-     └── Proxy Grafana ───── GrafanaElasticsearchService (resource Space-X, server London)
+     └── Proxy Grafana ───── GrafanaElasticsearchService (resource Space-X, server London & New York)
                │
                ├── Otomatis: scheduler harian (lihat tabel Scheduler di atas)
                └── Manual: dari panel (form fetch per rentang tanggal, maks 90 hari)
@@ -455,6 +501,18 @@ Resource reporting luar negeri, khusus server `london_dc`, data diambil lewat pr
 **APP Metric (DC)** — metrik server host `HQREPOLDNDC` (CPU, Memory, Disk) dari Metricbeat via Grafana; fetch manual; export Excel & CSV
 
 **DB Metric (DC)** — metrik server host `REPODBLDNDC` (CPU, Memory, Disk) dari Metricbeat via Grafana; fetch manual; export Excel & CSV
+
+### Menu: Space-X → Server New York
+
+Struktur identik dengan Server London (resource, filter, dan jenis chart yang sama persis), khusus server `newyork_dc` (index `reportingkcln-*`) / host `HQREPONYADC` & `REPODBNYADC` (index `metricbeat-*`):
+
+**Job Execution** — tabel status & durasi batch job per hari (`Batch_edw.sh`, `run_edw_dblink.sh`); chart perbandingan durasi minggu ini vs minggu lalu per job; fetch manual; export Excel & CSV
+
+**File Archive** — tabel hasil pengecekan file archive (row count) per hari per grup file; chart tren row count per grup file; fetch manual; export Excel & CSV
+
+**APP Metric (DC)** — metrik server host `HQREPONYADC` (CPU, Memory, Disk) dari Metricbeat via Grafana; fetch manual; export Excel & CSV
+
+**DB Metric (DC)** — metrik server host `REPODBNYADC` (CPU, Memory, Disk) dari Metricbeat via Grafana; fetch manual; export Excel & CSV
 
 > Menu **Server Tokyo** masih kosong (placeholder untuk penambahan server lain nanti).
 

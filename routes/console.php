@@ -92,3 +92,9 @@ Schedule::command('report:fetch-spacex-nyc-dc-app-metric')
     ->dailyAt('00:15')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/spacex-nyc-dc-app-metric-fetch.log'));
+
+// DB Metric (DC) (REPODBNYADC / Space-X Server New York)
+Schedule::command('report:fetch-spacex-nyc-dc-db-metric')
+    ->dailyAt('00:16')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/spacex-nyc-dc-db-metric-fetch.log'));

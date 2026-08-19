@@ -32,7 +32,8 @@ monitoring-laravel/
 │   │       ├── FetchSpacexNycDcAppMetricReport.php   # Fetch APP Metric DC New York (via proxy Grafana)
 │   │       └── FetchSpacexNycDcDbMetricReport.php    # Fetch DB Metric DC New York (via proxy Grafana)
 │   ├── Enums/
-│   │   └── MetricUnit.php
+│   │   ├── MetricUnit.php
+│   │   └── SpacexCity.php                        # Daftar kota/server Space-X (Ldn, Nyc, dst.) - dipakai service generik di bawah
 │   ├── Models/
 │   │   ├── AppMetric.php
 │   │   ├── MasterAplikasi.php
@@ -151,14 +152,10 @@ monitoring-laravel/
 │       ├── SystemOnlineReportService.php
 │       ├── WicDbMetricReportService.php
 │       ├── WicAppMetricReportService.php
-│       ├── SpacexLdnJobExecutionReportService.php
-│       ├── SpacexLdnFileArchiveReportService.php
-│       ├── SpacexLdnDcAppMetricReportService.php
-│       ├── SpacexLdnDcDbMetricReportService.php
-│       ├── SpacexNycJobExecutionReportService.php
-│       ├── SpacexNycFileArchiveReportService.php
-│       ├── SpacexNycDcAppMetricReportService.php
-│       ├── SpacexNycDcDbMetricReportService.php
+│       ├── SpacexJobExecutionReportService.php    # Generik semua kota Space-X (konfig per kota lihat App\Enums\SpacexCity)
+│       ├── SpacexFileArchiveReportService.php     # Generik semua kota Space-X
+│       ├── SpacexDcAppMetricReportService.php     # Generik semua kota Space-X
+│       ├── SpacexDcDbMetricReportService.php      # Generik semua kota Space-X
 │       ├── ActivityLogger.php                     # Pencatat Activity Log terpusat
 │       ├── LoginIpThrottle.php                    # Rate limit login per-IP
 │       ├── CsvFormulaGuard.php                    # Netralkan formula injection di export CSV/Excel

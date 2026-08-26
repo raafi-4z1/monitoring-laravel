@@ -206,10 +206,16 @@ class SystemOnlineReportIndexPage extends IndexPage
         $g     = $this->chartGranularity($data, fn($r) => $r->trx_date, fn($r) => $r->trx_hour);
         $label = $g['label'];
 
-        // Zero-fill: label sumbu-X dibangun sekali dari SEMUA data yang difilter, lalu
-        // tiap service di-map ke label yang sama (default 0 kalau slot itu tidak ada
-        // datanya) — supaya antar service_name selalu selaras di chart.
-        $labels   = $sorted->map($label)->unique()->values()->all();
+        // Zero-fill: label sumbu-X dibangun dari $data (rentang tanggal PENUH, SEBELUM
+        // filter Service), BUKAN dari $sorted (yang sudah disaring service) - kalau tidak,
+        // saat filter Service dipilih dan service itu kebetulan tidak lapor di sebagian
+        // tanggal dalam rentang, tanggal-tanggal itu lenyap total dari sumbu-X (bukan
+        // tampil sebagai 0), membuat chart terlihat bolong/pincang dibanding rentang
+        // tanggal yang sebenarnya dipilih user (bug sejenis yang sudah diperbaiki di
+        // TrxPbiLoaderReportIndexPage::buildCharts()). Tiap service tetap di-map ke label
+        // yang sama, default 0 kalau slot itu tidak ada datanya.
+        $labels   = $data->sortBy(fn($r) => $r->trx_date->format('Y-m-d') . sprintf('%02d', $r->trx_hour))
+            ->map($label)->unique()->values()->all();
         $services = $sorted->pluck('service_name')->unique()->sort()->values();
 
         $chart        = LineChartMetric::make('Response Time Avg (ms) per ' . ($g['isDaily'] ? 'Hari' : 'Jam'));

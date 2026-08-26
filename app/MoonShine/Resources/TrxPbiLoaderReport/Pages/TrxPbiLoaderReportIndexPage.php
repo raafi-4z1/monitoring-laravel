@@ -244,7 +244,14 @@ class TrxPbiLoaderReportIndexPage extends IndexPage
         // Semua series dibangun dari label yang SAMA supaya sumbu-X seragam antar series
         // — kalau Success & Failed di-map dari key yang beda-beda, series yang cuma punya
         // sedikit titik bisa "jatuh" ke posisi default di chart-nya.
-        $labels = $sorted->map($label)->unique()->values()->all();
+        //
+        // SENGAJA dihitung dari $data (rentang tanggal penuh), BUKAN dari $sorted (yang
+        // sudah disaring status) - supaya saat filter Status aktif (mis. "Failed"), sumbu
+        // waktu tetap mencakup rentang tanggal yang dipilih utuh (tanggal tanpa data
+        // status itu tampil sebagai 0, bukan lenyap dari chart & bikin sumbu-X terlihat
+        // bolong/pincang dibanding rentang yang sebenarnya dipilih user).
+        $labels = $data->sortBy(fn($r) => $r->trx_date->format('Y-m-d') . sprintf('%02d', $r->trx_hour))
+            ->map($label)->unique()->values()->all();
 
         // record_processed = SUM per grup; duration_sec = AVG per grup; throughput
         // diturunkan dari record/duration grup (bukan dirata-rata sendiri) — konsisten
@@ -283,10 +290,20 @@ class TrxPbiLoaderReportIndexPage extends IndexPage
             $durationFailed[$lbl]    = $f['duration_sec'] ?? 0;
         }
 
-        $totalRecord = $filtered->sum('record_processed');
-        $avgThrough  = $successData->isNotEmpty() ? $successData->avg('throughput_row_per_sec') : 0;
-        $avgDuration = $filtered->avg('duration_sec');
-        $failedCount = $data->where('status_job', 'failed')->count();
+        // Dihitung dari $filtered (data yang SUDAH mengikuti filter status aktif, kalau ada) -
+        // bug sebelumnya: Avg Throughput selalu diambil dari $successData (khusus sukses),
+        // jadi kalau user memilih filter Status = "Failed", $successData otomatis kosong dan
+        // metrik ini macet di 0 berapa pun tanggal yang dipilih. Sekarang pakai $aggregate()
+        // yang sama dengan yang dipakai tiap titik chart di atas, supaya metodologi rata-rata
+        // throughput konsisten (diturunkan dari sum(record)/avg(durasi), bukan rata-rata
+        // mentah kolom per baris yang bisa menyesatkan kalau volume antar barisnya timpang).
+        $overall     = $aggregate($filtered);
+        $totalRecord = $overall['record_processed'];
+        $avgThrough  = $overall['throughput_row_per_sec'];
+        $avgDuration = $overall['duration_sec'];
+        // $filtered (bukan $data) - supaya konsisten dengan filter status yang aktif, sama
+        // seperti 3 metrik di atas (sebelumnya pakai $data mentah, mengabaikan filter status).
+        $failedCount = $filtered->where('status_job', 'failed')->count();
 
         return Grid::make(array_filter([
             Column::make([Divider::make()])->columnSpan(12),

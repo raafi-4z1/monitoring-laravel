@@ -24,12 +24,6 @@ use Illuminate\Support\Facades\Log;
 class SpacexJobExecutionReportService
 {
     /**
-     * Cuma 2 job ini yang diambil dari log_category BATCH_JOB - sama untuk semua server,
-     * job lain dalam kategori yang sama (get_f1_file.sh, get_ext_file.sh, dll.) diabaikan.
-     */
-    private const JOB_NAMES = ['Batch_edw.sh', 'run_edw_dblink.sh'];
-
-    /**
      * @var array<string, array{service_name: string, server: string, model: class-string<Model>}>
      */
     private const CITIES = [
@@ -110,7 +104,7 @@ class SpacexJobExecutionReportService
             );
 
             $rows = collect($this->grafana->hits($response))
-                ->filter(fn (array $doc) => in_array($doc['job_name'] ?? null, self::JOB_NAMES, true));
+                ->filter(fn (array $doc) => filled($doc['job_name'] ?? null));
 
             if ($rows->isEmpty()) {
                 Log::warning("SpacexJobExecutionReportService [{$city->label()}]: tidak ada data untuk {$dateStr}");

@@ -463,6 +463,13 @@ class ElasticsearchService
                         ['term'  => ['metricset.name.keyword' => 'filesystem']],
                         ['range' => ['@timestamp'     => ['gte' => $dateFrom . 'T00:00:00.000', 'lte' => $dateTo . 'T23:59:59.999', 'time_zone' => '+07:00']]],
                     ],
+                    // NOT mount_point "Z:\" - sama seperti SpacexDcAppMetricReportService::excludeZDrive(),
+                    // dikonfirmasi user: drive Z: di host WIC (WICADBDC dkk.) juga network share
+                    // terpetakan, bukan disk lokal - kalau tidak dikecualikan, selalu tercatat
+                    // ~100% penuh dan bikin WicMetricAlertService salah-alarm terus-menerus.
+                    'must_not' => [
+                        ['term' => ['system.filesystem.mount_point.keyword' => 'Z:\\']],
+                    ],
                 ],
             ],
             'aggs' => [

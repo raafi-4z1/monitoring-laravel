@@ -43,8 +43,9 @@ class SpacexNycJobExecutionReportIndexPage extends IndexPage
     private const DAY_NAMES_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
     /**
-     * Cuma 2 job yang dipantau (lihat SpacexJobExecutionReportService::JOB_NAMES) - status selalu
-     * SUCCESS (job yang gagal tidak masuk log Grafana sama sekali), jadi tidak ada chart status.
+     * Semua job di bawah log_category BATCH_JOB dipantau (lihat SpacexJobExecutionReportService)
+     * - status kolomnya sudah tetap diwarnai merah kalau bukan SUCCESS (lihat fields() di bawah)
+     * untuk jaga-jaga, walau sejauh ini yang teramati di log Grafana selalu SUCCESS.
      */
     protected function assets(): array
     {
@@ -94,10 +95,12 @@ class SpacexNycJobExecutionReportIndexPage extends IndexPage
      */
     protected function filters(): iterable
     {
+        $jobNames = SpacexNycJobExecutionReport::query()->distinct()->orderBy('job_name')->pluck('job_name');
+
         return [
             DateRange::make('Tanggal', 'trx_date'),
             Select::make('Job Name', 'job_name')
-                ->options(['Batch_edw.sh' => 'Batch_edw.sh', 'run_edw_dblink.sh' => 'run_edw_dblink.sh'])
+                ->options($jobNames->combine($jobNames)->all())
                 ->nullable(),
         ];
     }

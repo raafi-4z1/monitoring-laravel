@@ -61,8 +61,20 @@ class GrafanaElasticsearchService
 
         $url = rtrim($host, '/') . ":{$this->port}/api/datasources/proxy/uid/{$uid}/_msearch";
 
+        // timeout + retry WAJIB di sini: tanpa keduanya (kondisi sebelumnya) satu stall sesaat
+        // di Grafana/ES membuat data hari itu hilang dan harus di-backfill manual. Lihat
+        // catatan lengkap beserta buktinya di config/grafana.php.
         $response = Http::withBasicAuth($this->username, $this->password)
             ->withBody($ndjson, 'application/x-ndjson')
+            ->timeout((int) config('grafana.timeout', 60))
+            // Sengaja TIDAK pakai throw:false - kalau semua percobaan habis, biarkan melempar
+            // seperti perilaku sebelumnya, karena pemanggilnya (Spacex*ReportService::fetchAndStore)
+            // sudah menangkap & mencatatnya. Yang berubah cuma: baru menyerah setelah 3 kali coba,
+            // bukan langsung gagal di percobaan pertama.
+            ->retry(
+                (int) config('grafana.retry_times', 3),
+                (int) config('grafana.retry_delay_ms', 2000)
+            )
             ->post($url);
 
         $json = $response->json() ?? [];

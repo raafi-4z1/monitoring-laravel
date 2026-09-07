@@ -19,8 +19,15 @@ class ElasticsearchService
 
     public function search(string $index, array $body): array
     {
+        // Timeout diset EKSPLISIT (bukan mengandalkan default Laravel yang kebetulan 30 detik),
+        // supaya batasnya terlihat & bisa diatur. Sengaja TANPA retry, beda dari
+        // GrafanaElasticsearchService: jalur ini juga melayani permintaan INTERAKTIF dari bot
+        // Telegram (/wic_, notifcc, goaml, mtel) - di situ gagal cepat lebih baik daripada
+        // membuat user menunggu berkali-kali timeout. Fetch terjadwal yang lewat sini pun
+        // dijalankan ulang keesokan harinya.
         $response = Http::withBasicAuth($this->username, $this->password)
             ->withoutVerifying()
+            ->timeout((int) config('elasticsearch.timeout', 30))
             ->post("{$this->host}/{$index}/_search", $body);
 
         $json = $response->json() ?? [];

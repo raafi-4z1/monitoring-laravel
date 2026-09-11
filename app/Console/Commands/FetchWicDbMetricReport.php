@@ -11,13 +11,21 @@ use Illuminate\Console\Command;
 
 class FetchWicDbMetricReport extends Command
 {
-    protected $signature = 'report:fetch-wic-metric';
+    protected $signature = 'report:fetch-wic-metric
+                            {--date= : Tanggal spesifik (Y-m-d), default kemarin}';
 
     protected $description = 'Fetch metrik WIC DB (CPU, Memory, Disk) dari Elasticsearch dan simpan ke DB';
 
     public function handle(WicDbMetricReportService $service): int
     {
-        $date = Carbon::yesterday();
+        // --date WAJIB ADA di sini, walau indeks xmb-ls* cuma menyimpan ~5 hari - justru KARENA
+        // jendelanya sesempit itu. Terukur: data lebih tua dari ~4 hari sudah tidak ada lagi di
+        // indeks, jadi lubang yang terlambat disadari hilang permanen. Tanpa opsi ini, tidak ada
+        // cara menambal tanggal tertentu tepat pada data yang paling sempit waktu penyelamatannya.
+        $date = $this->option('date')
+            ? Carbon::parse($this->option('date'))
+            : Carbon::yesterday();
+
         $this->info("Fetching WIC Metric untuk: {$date->format('Y-m-d')}");
 
         $ok = $service->fetchAndStore($date);

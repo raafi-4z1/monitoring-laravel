@@ -11,13 +11,19 @@ use Illuminate\Console\Command;
 
 class FetchTrxPbiLimitReport extends Command
 {
-    protected $signature = 'report:fetch-trx-pbi-limit';
+    protected $signature = 'report:fetch-trx-pbi-limit
+                            {--date= : Tanggal spesifik (Y-m-d), default kemarin}';
 
     protected $description = 'Fetch TrxPBI Limit report dari Elasticsearch dan simpan ke DB';
 
     public function handle(TrxPbiLimitReportService $service): int
     {
-        $date = Carbon::yesterday();
+        // --date dipakai untuk menambal lubang: indeks wic-trx-pbi-ceklimit* menyimpan ~60 hari,
+        // jadi tanggal yang terlewat masih bisa ditarik ulang selama belum melewati retensi itu.
+        $date = $this->option('date')
+            ? Carbon::parse($this->option('date'))
+            : Carbon::yesterday();
+
         $this->info("Fetching TrxPBI Limit report untuk: {$date->format('Y-m-d')}");
 
         $ok = $service->fetchAndStore($date);

@@ -14,7 +14,8 @@ class FetchMteleplusReport extends Command
      *
      * @var string
      */
-    protected $signature = 'report:fetch-mteleplus';
+    protected $signature = 'report:fetch-mteleplus
+                            {--date= : Tanggal spesifik (Y-m-d), default kemarin}';
 
     /**
      * The console command description.
@@ -28,7 +29,12 @@ class FetchMteleplusReport extends Command
      */
     public function handle(MteleplusReportService $service): int
     {
-        $date = Carbon::yesterday();
+        // --date dipakai untuk menambal lubang: indeks log-mteleplus* menyimpan ~60 hari,
+        // jadi tanggal yang terlewat masih bisa ditarik ulang selama belum melewati retensi itu.
+        $date = $this->option('date')
+            ? Carbon::parse($this->option('date'))
+            : Carbon::yesterday();
+
         $this->info("Fetching mTeleplus report untuk: {$date->format('Y-m-d')}");
 
         $ok = $service->fetchAndStore($date);

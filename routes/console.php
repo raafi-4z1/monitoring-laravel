@@ -4,97 +4,98 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('report:fetch-engine-notif')
-    ->dailyAt('00:01')
+    ->dailyAt('00:10')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/engine-notif-fetch.log'));
 
 Schedule::command('report:fetch-mteleplus')
-    ->dailyAt('00:02')
+    ->dailyAt('00:11')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/mteleplus-fetch.log'));
 
 Schedule::command('report:fetch-trx-pbi-limit')
-    ->dailyAt('00:03')
+    ->dailyAt('00:12')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/trx-pbi-limit-fetch.log'));
 
 // then() memicu export CSV setelah fetch settlement (command terakhir) selesai
 Schedule::command('report:fetch-trx-pbi-settlement')
-    ->dailyAt('00:04')
+    ->dailyAt('00:13')
     ->withoutOverlapping()
     ->then(fn () => Artisan::call('report:export-trx-pbi-csv'))
     ->appendOutputTo(storage_path('logs/trx-pbi-settlement-fetch.log'));
 
 Schedule::command('report:fetch-wic-metric')
-    ->dailyAt('00:05')
+    ->dailyAt('00:14')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/wic-metric-fetch.log'));
 
 // then() memicu export CSV setelah fetch WIC APP (command terakhir) selesai
 Schedule::command('report:fetch-wic-app-metric')
-    ->dailyAt('00:06')
+    ->dailyAt('00:15')
     ->withoutOverlapping()
     ->then(fn () => Artisan::call('report:export-wic-metric-csv'))
     ->appendOutputTo(storage_path('logs/wic-app-metric-fetch.log'));
 
 // then() memicu export CSV setelah fetch TrxPBI Loader selesai
 Schedule::command('report:fetch-trx-pbi-loader')
-    ->dailyAt('00:07')
+    ->dailyAt('00:16')
     ->withoutOverlapping()
     ->then(fn () => Artisan::call('report:export-trx-pbi-loader-csv'))
     ->appendOutputTo(storage_path('logs/trx-pbi-loader-fetch.log'));
 
 // then() memicu export CSV setelah fetch System Online selesai
 Schedule::command('report:fetch-system-online')
-    ->dailyAt('00:08')
+    ->dailyAt('00:17')
     ->withoutOverlapping()
     ->then(fn () => Artisan::call('report:export-system-online-csv'))
     ->appendOutputTo(storage_path('logs/system-online-fetch.log'));
 
 // Job Execution (Space-X / Reporting Luar Negeri)
 Schedule::command('report:fetch-spacex-ldn-job-execution')
-    ->dailyAt('00:09')
+    ->dailyAt('00:18')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/spacex-ldn-job-execution-fetch.log'));
 
 // APP Metric (DC) (HQREPOLDNDC / Space-X Server London)
 Schedule::command('report:fetch-spacex-ldn-dc-app-metric')
-    ->dailyAt('00:10')
+    ->dailyAt('00:19')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/spacex-ldn-dc-app-metric-fetch.log'));
 
 // DB Metric (DC) (REPODBLDNDC / Space-X Server London)
 Schedule::command('report:fetch-spacex-ldn-dc-db-metric')
-    ->dailyAt('00:11')
+    ->dailyAt('00:20')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/spacex-ldn-dc-db-metric-fetch.log'));
 
 // File Archive (Space-X / Reporting Luar Negeri)
 Schedule::command('report:fetch-spacex-ldn-file-archive')
-    ->dailyAt('00:12')
+    ->dailyAt('00:21')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/spacex-ldn-file-archive-fetch.log'));
 
 // Job Execution (Space-X / Reporting Luar Negeri, server New York)
 Schedule::command('report:fetch-spacex-nyc-job-execution')
-    ->dailyAt('00:13')
+    ->dailyAt('00:22')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/spacex-nyc-job-execution-fetch.log'));
 
 // File Archive (Space-X / Reporting Luar Negeri, server New York)
 Schedule::command('report:fetch-spacex-nyc-file-archive')
-    ->dailyAt('00:14')
+    ->dailyAt('00:23')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/spacex-nyc-file-archive-fetch.log'));
 
 // APP Metric (DC) (HQREPONYADC / Space-X Server New York)
 Schedule::command('report:fetch-spacex-nyc-dc-app-metric')
-    ->dailyAt('00:15')
+    ->dailyAt('00:24')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/spacex-nyc-dc-app-metric-fetch.log'));
 
 // DB Metric (DC) (REPODBNYADC / Space-X Server New York)
 Schedule::command('report:fetch-spacex-nyc-dc-db-metric')
-    ->dailyAt('00:16')
+    ->dailyAt('00:25')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/spacex-nyc-dc-db-metric-fetch.log'));
+

@@ -11,13 +11,19 @@ use Illuminate\Console\Command;
 
 class FetchTrxPbiSettlementReport extends Command
 {
-    protected $signature = 'report:fetch-trx-pbi-settlement';
+    protected $signature = 'report:fetch-trx-pbi-settlement
+                            {--date= : Tanggal spesifik (Y-m-d), default kemarin}';
 
     protected $description = 'Fetch TrxPBI Settlement report dari Elasticsearch dan simpan ke DB';
 
     public function handle(TrxPbiSettlementReportService $service): int
     {
-        $date = Carbon::yesterday();
+        // --date dipakai untuk menambal lubang: indeks log-wic-trx-pbi* menyimpan ~60 hari,
+        // jadi tanggal yang terlewat masih bisa ditarik ulang selama belum melewati retensi itu.
+        $date = $this->option('date')
+            ? Carbon::parse($this->option('date'))
+            : Carbon::yesterday();
+
         $this->info("Fetching TrxPBI Settlement report untuk: {$date->format('Y-m-d')}");
 
         $ok = $service->fetchAndStore($date);
